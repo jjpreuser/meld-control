@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Meld Studio Remote</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>Meld Studio</h1>
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Connecting...</span>
+      <span class="badge" id="versionBadge"></span>
+    </div>
+    <div class="transport-controls">
+      <button class="btn btn-stream" id="btnStream" data-action="stream">Stream</button>
+      <button class="btn btn-record" id="btnRecord" data-action="record">Record</button>
+      <button class="btn btn-screenshot" id="btnScreenshot" title="Screenshot">📷</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="scenes">Scenes</button>
+    <button class="tab" data-tab="layers">Layers</button>
+    <button class="tab" data-tab="audio">Audio</button>
+    <button class="tab" data-tab="commands">Commands</button>
+  </nav>
+
+  <main>
+    <section id="tab-scenes" class="tab-content active">
+      <div id="sceneList" class="card-list"></div>
+    </section>
+
+    <section id="tab-layers" class="tab-content">
+      <div id="layerHeader" class="layer-header hidden">
+        <button id="btnBackScenes" class="btn btn-back">&larr; Back</button>
+        <h2 id="layerSceneName"></h2>
+      </div>
+      <div id="layerList" class="card-list"></div>
+    </section>
+
+    <section id="tab-audio" class="tab-content">
+      <div id="trackList" class="card-list"></div>
+    </section>
+
+    <section id="tab-commands" class="tab-content">
+      <div class="command-grid">
+        <button class="btn btn-cmd" data-cmd="meld.screenshot">Screenshot</button>
+        <button class="btn btn-cmd" data-cmd="meld.screenshot.vertical">Screenshot V</button>
+        <button class="btn btn-cmd" data-cmd="meld.toggleVirtualCameraAction">Virtual Camera</button>
+        <button class="btn btn-cmd" data-cmd="meld.recordClip">Record Clip</button>
+        <button class="btn btn-cmd" data-cmd="meld.replay.show">Show Replay</button>
+        <button class="btn btn-cmd" data-cmd="meld.replay.dismiss">Dismiss Replay</button>
+      </div>
+      <hr>
+      <h3>Stream Events</h3>
+      <div class="command-grid">
+        <button class="btn btn-cmd" data-event="CONFETTIFALL_TRIGGER">Confetti Fall</button>
+        <button class="btn btn-cmd" data-event="CONFETTIPOP_TRIGGER">Confetti Pop</button>
+        <button class="btn btn-cmd" data-event="STOPWATCH_RESET">Stopwatch Reset</button>
+        <button class="btn btn-cmd" data-event="STOPWATCH_PAUSE">Stopwatch Pause</button>
+        <button class="btn btn-cmd" data-event="STOPWATCH_RESUME">Stopwatch Resume</button>
+        <button class="btn btn-cmd" data-event="COUNTDOWN_RESET">Countdown Reset</button>
+        <button class="btn btn-cmd" data-event="COUNTDOWN_PAUSE">Countdown Pause</button>
+        <button class="btn btn-cmd" data-event="COUNTDOWN_RESUME">Countdown Resume</button>
+        <button class="btn btn-cmd" data-event="WHEELSPIN_SPIN">Spin Wheel</button>
+        <button class="btn btn-cmd" data-event="COUNTER_INCREMENT">Counter +</button>
+        <button class="btn btn-cmd" data-event="COUNTER_DECREMENT">Counter -</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

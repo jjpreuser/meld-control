@@ -1,0 +1,22 @@
+{
+  "name": "meld-control",
+  "version": "1.0.0",
+  "description": "Meld Studio remote control bridge",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "meld",
+    "studio",
+    "websocket",
+    "qwebchannel"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.20.0"
+  }
+}
