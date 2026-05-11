@@ -37,6 +37,8 @@ class MeldBridge {
       isStreaming: false,
       isRecording: false,
       version: 1,
+      transition: { type: 'cut', duration: 300 },
+      sceneTimers: {},
     };
 
     this.uiSockets = new Set();
@@ -61,8 +63,20 @@ class MeldBridge {
         this.cache.isRecording = !!this.meld.isRecording;
 
         this.meld.sessionChanged.connect(() => {
-          this.cache.session = this.meld.session || { items: {} };
-          this.broadcast({ type: 'update', key: 'session', value: this.cache.session });
+          const prevSession = this.cache.session;
+          const newSession = this.meld.session || { items: {} };
+
+          for (const [id, item] of Object.entries(newSession.items || {})) {
+            if (item.type === 'scene' && item.current) {
+              const wasCurrent = prevSession?.items?.[id]?.current;
+              if (!wasCurrent) {
+                this.cache.sceneTimers[id] = Date.now();
+              }
+            }
+          }
+
+          this.cache.session = newSession;
+          this.broadcast({ type: 'update', key: 'session', value: this.cache.session, sceneTimers: this.cache.sceneTimers });
         });
 
         this.meld.isStreamingChanged.connect(() => {
@@ -264,6 +278,32 @@ async function main() {
     res.json({ version: bridge.cache.version });
   }));
 
+  app.get('/api/transition', api(async (req, res) => {
+    res.json(bridge.cache.transition);
+  }));
+
+  app.post('/api/transition', api(async (req, res) => {
+    const { type, duration } = req.body || {};
+    if (type) bridge.cache.transition.type = type;
+    if (duration !== undefined) bridge.cache.transition.duration = duration;
+    bridge.broadcast({ type: 'transition', value: bridge.cache.transition });
+    res.json({ ok: true, transition: bridge.cache.transition });
+  }));
+
+  app.post('/api/scene/:id/switch', api(async (req, res) => {
+    const { transitionType, transitionDuration } = req.body || {};
+    const t = bridge.cache.transition;
+    const tt = transitionType || t.type;
+    const td = transitionDuration !== undefined ? transitionDuration : t.duration;
+
+    if (tt !== 'cut') {
+      try { bridge.meld.sendCommand(`meld.setCurrentSceneTransitionName ${tt}`); } catch {}
+      try { bridge.meld.sendCommand(`meld.setCurrentSceneTransitionDuration ${td}`); } catch {}
+    }
+    bridge.meld.showScene(req.params.id);
+    res.json({ ok: true });
+  }));
+
   server.listen(HTTP_PORT, '0.0.0.0', () => {
     console.log(`Meld Studio Control Bridge`);
     console.log(`  Local:    http://127.0.0.1:${HTTP_PORT}`);
@@ -279,6 +319,8 @@ async function main() {
 
     bridge.initialize().then(() => {
       const count = Object.keys(bridge.cache.session.items || {}).length;
+      bridge.broadcast({ type: 'update', key: 'session', value: bridge.cache.session, sceneTimers: bridge.cache.sceneTimers });
+      bridge.broadcast({ type: 'transition', value: bridge.cache.transition });
       console.log(`Connected to Meld Studio (API v${bridge.cache.version})`);
       console.log(`  ${count} items in session`);
     }).catch(() => {});

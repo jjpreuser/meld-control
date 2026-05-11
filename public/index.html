@@ -20,6 +20,18 @@
       <button class="btn btn-screenshot" id="btnScreenshot" title="Screenshot">📷</button>
     </div>
   </header>
+  <div id="sceneBus" class="scene-bus hidden">
+    <div class="bus-live">
+      <span class="bus-label live">LIVE</span>
+      <span class="bus-name" id="busLiveName">—</span>
+      <span class="bus-timer" id="busLiveTimer"></span>
+    </div>
+    <button class="btn btn-next" id="btnShowNext">SHOW NEXT</button>
+    <div class="bus-next">
+      <span class="bus-label next">NEXT</span>
+      <span class="bus-name" id="busNextName">—</span>
+    </div>
+  </div>
 
   <nav class="tabs">
     <button class="tab active" data-tab="scenes">Scenes</button>
@@ -30,7 +42,19 @@
 
   <main>
     <section id="tab-scenes" class="tab-content active">
-      <div id="sceneList" class="card-list"></div>
+      <div id="transitionBar" class="transition-bar">
+        <label class="t-label">Transition:</label>
+        <select id="transitionType">
+          <option value="cut">Cut</option>
+          <option value="fade">Fade</option>
+          <option value="wipe">Wipe</option>
+          <option value="slide">Slide</option>
+        </select>
+        <label class="t-label">Duration:</label>
+        <input type="range" id="transitionDuration" min="100" max="2000" step="50" value="300">
+        <span id="transitionDurationLabel">300ms</span>
+      </div>
+      <div id="sceneList" class="scene-grid"></div>
     </section>
 
     <section id="tab-layers" class="tab-content">

@@ -18,6 +18,9 @@ const API = (() => {
 
 let session = { items: {} };
 let selectedSceneId = null;
+let sceneTimers = {};
+let currentTransition = { type: 'cut', duration: 300 };
+let timerInterval = null;
 
 const $ = (id) => document.getElementById(id);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -46,6 +49,23 @@ function setStatus(connected, version) {
   }
 }
 
+function getSceneIcon(scene) {
+  if (scene.source) return '🖥️';
+  if (scene.url) return '🌐';
+  if (scene.mediaSource) return '🎬';
+  return '📺';
+}
+
+function formatTime(ms) {
+  if (!ms || ms <= 0) return '';
+  const totalSec = Math.floor((Date.now() - ms) / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function renderScenes() {
   const container = $('sceneList');
   const scenes = Object.entries(session.items || {})
@@ -55,19 +75,37 @@ function renderScenes() {
   container.innerHTML = scenes.map(([id, scene]) => {
     const isCurrent = scene.current ? 'current' : '';
     const isStaged = scene.staged ? 'staged' : '';
+    const elapsed = scene.current && sceneTimers[id] ? formatTime(sceneTimers[id]) : '';
     return `
-      <div class="card scene-card ${isCurrent} ${isStaged}" data-id="${id}">
-        <div class="card-body" data-action="show">
-          <span class="card-name">${escHtml(scene.name)}</span>
-          <span class="card-badge">Scene ${scene.index}</span>
-        </div>
-        <div class="card-actions">
-          <button class="btn btn-sm btn-outline" data-action="layers">Layers</button>
-          <button class="btn btn-sm ${isStaged ? 'btn-warning' : 'btn-outline'}" data-action="stage">Stage</button>
-        </div>
+      <div class="scene-card ${isCurrent} ${isStaged}" data-id="${id}" data-action="show">
+        <div class="scene-card-icon">${getSceneIcon(scene)}</div>
+        <div class="scene-card-name">${escHtml(scene.name || `Scene ${scene.index}`)}</div>
+        <div class="scene-card-index">Scene ${scene.index}</div>
+        ${elapsed ? `<div class="scene-card-timer">${elapsed}</div>` : ''}
+        <button class="btn btn-stage ${isStaged ? 'btn-warning' : 'btn-outline'}" data-action="stage">${isStaged ? 'Staged' : 'Stage'}</button>
       </div>
     `;
   }).join('');
+}
+
+function renderBus() {
+  const bus = $('sceneBus');
+  const scenes = Object.entries(session.items || {})
+    .filter(([, v]) => v.type === 'scene');
+
+  const current = scenes.find(([, v]) => v.current);
+  const staged = scenes.find(([, v]) => v.staged);
+
+  $('busLiveName').textContent = current ? escHtml(current[1].name) : '—';
+  $('busNextName').textContent = staged ? escHtml(staged[1].name) : '—';
+
+  const timer = current && sceneTimers[current[0]] ? formatTime(sceneTimers[current[0]]) : '';
+  $('busLiveTimer').textContent = timer;
+
+  const btnNext = $('btnShowNext');
+  btnNext.disabled = !staged;
+
+  bus.classList.toggle('hidden', scenes.length === 0);
 }
 
 function renderLayers() {
@@ -152,21 +190,65 @@ function escHtml(str) {
   return div.innerHTML;
 }
 
+function renderAll() {
+  renderScenes();
+  renderBus();
+  if (selectedSceneId) renderLayers();
+  renderAudio();
+}
+
+function applySession(data) {
+  session = data.session || data;
+  if (data.sceneTimers) sceneTimers = data.sceneTimers;
+  if (data.transition) currentTransition = data.transition;
+  renderAll();
+  $('btnStream').textContent = data.isStreaming ? 'Stop Stream' : 'Start Stream';
+  $('btnStream').className = `btn ${data.isStreaming ? 'btn-danger' : 'btn-stream'}`;
+  $('btnRecord').textContent = data.isRecording ? 'Stop Record' : 'Start Record';
+  $('btnRecord').className = `btn ${data.isRecording ? 'btn-danger' : 'btn-record'}`;
+  setStatus(true, data.version);
+}
+
 async function refreshSession() {
   try {
     const data = await API.get('/api/session');
-    session = data.session || data;
-    renderScenes();
-    if (selectedSceneId) renderLayers();
-    renderAudio();
-    $('btnStream').textContent = data.isStreaming ? 'Stop Stream' : 'Start Stream';
-    $('btnStream').className = `btn ${data.isStreaming ? 'btn-danger' : 'btn-stream'}`;
-    $('btnRecord').textContent = data.isRecording ? 'Stop Record' : 'Start Record';
-    $('btnRecord').className = `btn ${data.isRecording ? 'btn-danger' : 'btn-record'}`;
-    setStatus(true, data.version);
+    applySession(data);
   } catch {
     setStatus(false);
+    setTimeout(refreshSession, 1000);
   }
+}
+
+function initTransitionBar() {
+  const sel = $('transitionType');
+  const range = $('transitionDuration');
+  const label = $('transitionDurationLabel');
+
+  sel.value = currentTransition.type || 'cut';
+  range.value = currentTransition.duration || 300;
+  label.textContent = `${range.value}ms`;
+
+  sel.addEventListener('change', async () => {
+    currentTransition.type = sel.value;
+    await API.post('/api/transition', currentTransition);
+  });
+
+  range.addEventListener('input', () => {
+    label.textContent = `${range.value}ms`;
+  });
+
+  range.addEventListener('change', async () => {
+    currentTransition.duration = parseInt(range.value);
+    await API.post('/api/transition', currentTransition);
+  });
+}
+
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    renderScenes();
+    renderBus();
+  }, 1000);
 }
 
 async function init() {
@@ -179,10 +261,22 @@ async function init() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'update') {
-        if (msg.key === 'session') session = msg.value;
-        else session[msg.key] = msg.value;
+        if (msg.key === 'session') {
+          session = msg.value;
+          if (msg.sceneTimers) sceneTimers = msg.sceneTimers;
+        } else {
+          session[msg.key] = msg.value;
+        }
         refreshSession();
-      } else if (msg.type === 'gain') {
+      } else if (msg.type === 'transition') {
+        currentTransition = msg.value;
+        const sel = $('transitionType');
+        const range = $('transitionDuration');
+        if (sel) sel.value = currentTransition.type || 'cut';
+        if (range) {
+          range.value = currentTransition.duration || 300;
+          $('transitionDurationLabel').textContent = `${range.value}ms`;
+        }
       }
     } catch {}
   };
@@ -197,25 +291,23 @@ async function init() {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
+    const card = btn.closest('[data-id]');
+    const id = card ? card.dataset.id : null;
 
-    if (action === 'show') {
-      const id = btn.closest('[data-id]').dataset.id;
-      await API.post(`/api/scene/${id}/show`);
-      showToast('Switched scene');
-      setTimeout(refreshSession, 300);
-    } else if (action === 'stage') {
-      const id = btn.closest('[data-id]').dataset.id;
+    if (action === 'show' && id) {
+      const cardEl = card;
+      cardEl.classList.add('transitioning');
+      await API.post(`/api/scene/${id}/switch`, { transitionType: currentTransition.type, transitionDuration: currentTransition.duration });
+      showToast(currentTransition.type === 'cut' ? 'Switched scene' : `${currentTransition.type} to scene`);
+      setTimeout(refreshSession, 400);
+      setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
+    } else if (action === 'stage' && id) {
       await API.post(`/api/scene/${id}/stage`);
       showToast('Staged scene');
       setTimeout(refreshSession, 300);
-    } else if (action === 'layers') {
-      selectedSceneId = btn.closest('[data-id]').dataset.id;
-      renderLayers();
-      document.querySelector('[data-tab="layers"]').click();
     } else if (action === 'toggle-vis') {
-      const card = btn.closest('[data-id]');
-      const layerId = card.dataset.id;
-      if (!selectedSceneId) return;
+      const layerId = card ? card.dataset.id : null;
+      if (!selectedSceneId || !layerId) return;
       await API.post(`/api/layer/${layerId}/toggle`, { sceneId: selectedSceneId });
       setTimeout(refreshSession, 300);
     } else if (action === 'track-mute') {
@@ -231,6 +323,28 @@ async function init() {
       await API.post(`/api/track/${trackId}/monitor`);
       setTimeout(refreshSession, 300);
     }
+  });
+
+  document.getElementById('btnShowNext').addEventListener('click', async () => {
+    const scenes = Object.entries(session.items || {}).filter(([, v]) => v.type === 'scene');
+    const staged = scenes.find(([, v]) => v.staged);
+    if (!staged) return;
+    const cardEl = document.querySelector(`.scene-card[data-id="${staged[0]}"]`);
+    if (cardEl) cardEl.classList.add('transitioning');
+    await API.post(`/api/scene/${staged[0]}/switch`, { transitionType: currentTransition.type, transitionDuration: currentTransition.duration });
+    showToast(currentTransition.type === 'cut' ? 'Showing next scene' : `${currentTransition.type} to next scene`);
+    setTimeout(refreshSession, 400);
+    if (cardEl) setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
+  });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="layers"]');
+    if (!btn) return;
+    const card = btn.closest('[data-id]');
+    if (!card) return;
+    selectedSceneId = card.dataset.id;
+    renderLayers();
+    document.querySelector('[data-tab="layers"]').click();
   });
 
   document.addEventListener('click', async (e) => {
@@ -281,6 +395,9 @@ async function init() {
       document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
     });
   });
+
+  initTransitionBar();
+  startTimer();
 }
 
 init();
