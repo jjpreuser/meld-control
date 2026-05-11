@@ -190,9 +190,26 @@ header h1 {
 .layer-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 4px;
 }
+
+.layer-name-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 4px;
+  outline: none;
+  font-family: inherit;
+}
+
+.layer-name-input:hover { border-color: var(--border); }
+.layer-name-input:focus { border-color: var(--primary); background: var(--surface2); }
 
 .layer-idx {
   font-size: 11px;
@@ -208,11 +225,70 @@ header h1 {
 }
 
 .layer-geo {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: monospace;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   margin-bottom: 8px;
 }
+
+.layer-num-wrap {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.layer-num {
+  width: 48px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 1px 4px;
+  border-radius: 3px;
+  outline: none;
+}
+
+.layer-num:focus { border-color: var(--primary); }
+
+.layer-props {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.layer-prop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.layer-prop-key {
+  color: var(--text-muted);
+  min-width: 60px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+.layer-prop-val {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  outline: none;
+}
+
+.layer-prop-val:focus { border-color: var(--primary); }
 
 .layer-effects {
   display: flex;

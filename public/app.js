@@ -23,6 +23,7 @@ let timerInterval = null;
 
 const $ = (id) => document.getElementById(id);
 const $$ = (sel) => document.querySelectorAll(sel);
+const expandedProps = {};
 
 function showToast(msg) {
   const el = $('toast');
@@ -168,24 +169,52 @@ function renderLayers() {
     const effects = layerEffectMap[id] || [];
     const icon = layer.source ? '🖼️' : layer.url ? '🌐' : layer.mediaSource ? '🎬' : '📄';
     const sourceType = layer.source ? 'Image' : layer.url ? 'Browser' : layer.mediaSource ? 'Media' : 'Source';
+
+    const coreProps = new Set(['type', 'parent', 'index', 'name', 'x', 'y', 'width', 'height', 'rotation', 'visible', 'isEffectivelyVisible']);
+    const extraProps = Object.entries(layer).filter(([k]) => !coreProps.has(k));
+    const isOpen = expandedProps[id];
+
     return `
       <div class="card layer-card" data-id="${id}">
         <div class="layer-head">
           <span class="layer-idx">${idx + 1}</span>
-          <span class="card-name">${icon} ${escHtml(layer.name || 'Untitled')}</span>
+          ${icon}
+          <input class="layer-name-input" value="${escHtml(layer.name || 'Untitled')}" data-layer-id="${id}" data-prop="name">
           <span class="card-badge">${sourceType}</span>
         </div>
-        <div class="layer-geo">${layer.width}×${layer.height} · ${layer.x},${layer.y}</div>
+        <div class="layer-geo">
+          <label class="layer-num-wrap">X <input type="number" class="layer-num" value="${layer.x}" data-layer-id="${id}" data-prop="x"></label>
+          <label class="layer-num-wrap">Y <input type="number" class="layer-num" value="${layer.y}" data-layer-id="${id}" data-prop="y"></label>
+          <label class="layer-num-wrap">W <input type="number" class="layer-num" value="${layer.width}" data-layer-id="${id}" data-prop="width"></label>
+          <label class="layer-num-wrap">H <input type="number" class="layer-num" value="${layer.height}" data-layer-id="${id}" data-prop="height"></label>
+          <label class="layer-num-wrap">↻ <input type="number" class="layer-num" value="${layer.rotation || 0}" data-layer-id="${id}" data-prop="rotation" step="0.1"></label>
+        </div>
         <div class="card-actions">
           <button class="btn btn-sm ${layer.visible ? 'btn-primary active' : 'btn-outline'}" data-action="toggle-vis">${layer.visible ? 'Visible' : 'Hidden'}</button>
           ${track ? `<button class="btn btn-sm ${track.muted ? 'btn-danger' : 'btn-outline'}" data-action="track-mute" data-track-id="${track.id}">${track.muted ? 'Muted' : 'Mute'}</button>` : ''}
+          ${extraProps.length ? `<button class="btn btn-sm ${isOpen ? 'btn-primary' : 'btn-outline'}" data-action="toggle-props">⚙ Props</button>` : ''}
         </div>
+        ${isOpen && extraProps.length ? `<div class="layer-props">${extraProps.map(([k, v]) => `
+          <label class="layer-prop-row"><span class="layer-prop-key">${k}</span> <input class="layer-prop-val" value="${escHtml(String(v))}" data-layer-id="${id}" data-prop="${k}"></label>
+        `).join('')}</div>` : ''}
         ${effects.length ? `<div class="layer-effects">${effects.map(e => `
           <button class="btn btn-xs ${e.enabled ? 'btn-on' : 'btn-off'}" data-action="toggle-effect" data-layer-id="${id}" data-effect-id="${e.id}">${escHtml(e.name)}</button>
         `).join('')}</div>` : ''}
       </div>
     `;
   }).join('');
+
+  container.addEventListener('change', async (e) => {
+    const input = e.target.closest('[data-prop]');
+    if (!input) return;
+    const layerId = input.dataset.layerId;
+    const prop = input.dataset.prop;
+    const value = input.type === 'number' ? parseFloat(input.value) : input.value;
+    try {
+      await API.post(`/api/property/${layerId}`, { property: prop, value });
+      showToast(`${prop}: ${value}`);
+    } catch {}
+  });
 }
 
 function renderAudio() {
@@ -326,6 +355,11 @@ async function init() {
       setTimeout(refreshSession, 300);
     } else if (action === 'pick-scene') {
       selectedSceneId = btn.dataset.sceneId;
+      renderLayers();
+    } else if (action === 'toggle-props') {
+      const card = btn.closest('[data-id]');
+      if (!card) return;
+      expandedProps[card.dataset.id] = !expandedProps[card.dataset.id];
       renderLayers();
     }
   });
