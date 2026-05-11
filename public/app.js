@@ -76,12 +76,17 @@ function renderScenes() {
     const isStaged = scene.staged ? 'staged' : '';
     const elapsed = scene.current && sceneTimers[id] ? formatTime(sceneTimers[id]) : '';
     return `
-      <div class="scene-card ${isCurrent} ${isStaged}" data-id="${id}" data-action="show">
-        <div class="scene-card-icon">${getSceneIcon(scene)}</div>
-        <div class="scene-card-name">${escHtml(scene.name || `Scene ${scene.index}`)}</div>
-        <div class="scene-card-index">Scene ${scene.index}</div>
-        ${elapsed ? `<div class="scene-card-timer">${elapsed}</div>` : ''}
-        <button class="btn btn-stage ${isStaged ? 'btn-warning' : 'btn-outline'}" data-action="stage">${isStaged ? 'Staged' : 'Stage'}</button>
+      <div class="scene-card ${isCurrent} ${isStaged}" data-id="${id}">
+        <div class="scene-card-body" data-action="layers">
+          <div class="scene-card-icon">${getSceneIcon(scene)}</div>
+          <div class="scene-card-name">${escHtml(scene.name || `Scene ${scene.index}`)}</div>
+          <div class="scene-card-index">Scene ${scene.index}</div>
+          ${elapsed ? `<div class="scene-card-timer">${elapsed}</div>` : ''}
+        </div>
+        <div class="scene-card-actions">
+          <button class="btn btn-sm ${isCurrent ? 'btn-primary' : 'btn-outline'}" data-action="show">${isCurrent ? 'Live' : 'Switch'}</button>
+          <button class="btn btn-sm ${isStaged ? 'btn-warning' : 'btn-outline'}" data-action="stage">${isStaged ? 'Staged' : 'Stage'}</button>
+        </div>
       </div>
     `;
   }).join('');
@@ -111,6 +116,15 @@ function renderLayers() {
   const container = $('layerList');
   const header = $('layerHeader');
   const title = $('layerSceneName');
+  const picker = $('scenePicker');
+
+  const scenes = Object.entries(session.items || {})
+    .filter(([, v]) => v.type === 'scene')
+    .sort((a, b) => (a[1].index || 0) - (b[1].index || 0));
+
+  picker.innerHTML = scenes.map(([id, s]) => `
+    <button class="btn btn-sm ${id === selectedSceneId ? 'btn-primary' : 'btn-outline'}" data-action="pick-scene" data-scene-id="${id}">${escHtml(s.name || `Scene ${s.index}`)}</button>
+  `).join('');
 
   if (!selectedSceneId) {
     container.innerHTML = '<p class="empty">Select a scene to view layers</p>';
@@ -135,24 +149,40 @@ function renderLayers() {
   const trackItems = Object.entries(session.items || {})
     .filter(([, v]) => v.type === 'track' && v.parent === selectedSceneId);
 
+  const effectItems = Object.entries(session.items || {})
+    .filter(([, v]) => v.type === 'effect');
+
   const layerTrackMap = {};
   for (const [id, track] of trackItems) {
     layerTrackMap[track.parent] = { id, ...track };
   }
 
-  container.innerHTML = layerItems.map(([id, layer]) => {
+  const layerEffectMap = {};
+  for (const [id, effect] of effectItems) {
+    if (!layerEffectMap[effect.parent]) layerEffectMap[effect.parent] = [];
+    layerEffectMap[effect.parent].push({ id, ...effect });
+  }
+
+  container.innerHTML = layerItems.map(([id, layer], idx) => {
     const track = layerTrackMap[id];
-    const name = layer.source ? '🖼' : layer.url ? '🌐' : layer.mediaSource ? '🎬' : '📄';
+    const effects = layerEffectMap[id] || [];
+    const icon = layer.source ? '🖼️' : layer.url ? '🌐' : layer.mediaSource ? '🎬' : '📄';
+    const sourceType = layer.source ? 'Image' : layer.url ? 'Browser' : layer.mediaSource ? 'Media' : 'Source';
     return `
       <div class="card layer-card" data-id="${id}">
-        <div class="card-body">
-          <span class="card-name">${name} ${escHtml(layer.name)}</span>
-          <span class="card-dims">${layer.width}x${layer.height}</span>
+        <div class="layer-head">
+          <span class="layer-idx">${idx + 1}</span>
+          <span class="card-name">${icon} ${escHtml(layer.name || 'Untitled')}</span>
+          <span class="card-badge">${sourceType}</span>
         </div>
+        <div class="layer-geo">${layer.width}×${layer.height} · ${layer.x},${layer.y}</div>
         <div class="card-actions">
           <button class="btn btn-sm ${layer.visible ? 'btn-primary active' : 'btn-outline'}" data-action="toggle-vis">${layer.visible ? 'Visible' : 'Hidden'}</button>
           ${track ? `<button class="btn btn-sm ${track.muted ? 'btn-danger' : 'btn-outline'}" data-action="track-mute" data-track-id="${track.id}">${track.muted ? 'Muted' : 'Mute'}</button>` : ''}
         </div>
+        ${effects.length ? `<div class="layer-effects">${effects.map(e => `
+          <button class="btn btn-xs ${e.enabled ? 'btn-on' : 'btn-off'}" data-action="toggle-effect" data-layer-id="${id}" data-effect-id="${e.id}">${escHtml(e.name)}</button>
+        `).join('')}</div>` : ''}
       </div>
     `;
   }).join('');
@@ -192,7 +222,7 @@ function escHtml(str) {
 function renderAll() {
   renderScenes();
   renderBus();
-  if (selectedSceneId) renderLayers();
+  renderLayers();
   renderAudio();
 }
 
@@ -264,7 +294,7 @@ async function init() {
       const cardEl = card;
       cardEl.classList.add('transitioning');
       await API.post(`/api/scene/${id}/switch`);
-      showToast(currentTransition.type === 'cut' ? 'Switched scene' : `${currentTransition.type} to scene`);
+      showToast('Switched scene');
       setTimeout(refreshSession, 400);
       setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
     } else if (action === 'stage' && id) {
@@ -288,6 +318,15 @@ async function init() {
       const { trackId } = btn.dataset;
       await API.post(`/api/track/${trackId}/monitor`);
       setTimeout(refreshSession, 300);
+    } else if (action === 'toggle-effect') {
+      const effectId = btn.dataset.effectId;
+      const layerId = btn.dataset.layerId;
+      if (!selectedSceneId || !layerId || !effectId) return;
+      await API.post(`/api/effect/${effectId}/toggle`, { sceneId: selectedSceneId, layerId });
+      setTimeout(refreshSession, 300);
+    } else if (action === 'pick-scene') {
+      selectedSceneId = btn.dataset.sceneId;
+      renderLayers();
     }
   });
 
@@ -298,7 +337,7 @@ async function init() {
     const cardEl = document.querySelector(`.scene-card[data-id="${staged[0]}"]`);
     if (cardEl) cardEl.classList.add('transitioning');
     await API.post(`/api/scene/${staged[0]}/switch`);
-    showToast(currentTransition.type === 'cut' ? 'Showing next scene' : `${currentTransition.type} to next scene`);
+    showToast('Showing next scene');
     setTimeout(refreshSession, 400);
     if (cardEl) setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
   });
