@@ -62,6 +62,13 @@ class MeldBridge {
         this.cache.isStreaming = !!this.meld.isStreaming;
         this.cache.isRecording = !!this.meld.isRecording;
 
+        this.cache.sceneTimers = {};
+        for (const [id, item] of Object.entries(this.cache.session.items || {})) {
+          if (item.type === 'scene' && item.current) {
+            this.cache.sceneTimers[id] = Date.now();
+          }
+        }
+
         this.meld.sessionChanged.connect(() => {
           const prevSession = this.cache.session;
           const newSession = this.meld.session || { items: {} };
