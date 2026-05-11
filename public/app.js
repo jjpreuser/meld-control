@@ -19,7 +19,6 @@ const API = (() => {
 let session = { items: {} };
 let selectedSceneId = null;
 let sceneTimers = {};
-let currentTransition = { type: 'cut', duration: 300 };
 let timerInterval = null;
 
 const $ = (id) => document.getElementById(id);
@@ -200,7 +199,6 @@ function renderAll() {
 function applySession(data) {
   session = data.session || data;
   if (data.sceneTimers) sceneTimers = data.sceneTimers;
-  if (data.transition) currentTransition = data.transition;
   renderAll();
   $('btnStream').textContent = data.isStreaming ? 'Stop Stream' : 'Start Stream';
   $('btnStream').className = `btn ${data.isStreaming ? 'btn-danger' : 'btn-stream'}`;
@@ -219,30 +217,6 @@ async function refreshSession() {
   }
 }
 
-function initTransitionBar() {
-  const sel = $('transitionType');
-  const range = $('transitionDuration');
-  const label = $('transitionDurationLabel');
-
-  sel.value = currentTransition.type || 'cut';
-  range.value = currentTransition.duration || 300;
-  label.textContent = `${range.value}ms`;
-
-  sel.addEventListener('change', async () => {
-    currentTransition.type = sel.value;
-    await API.post('/api/transition', currentTransition);
-  });
-
-  range.addEventListener('input', () => {
-    label.textContent = `${range.value}ms`;
-  });
-
-  range.addEventListener('change', async () => {
-    currentTransition.duration = parseInt(range.value);
-    await API.post('/api/transition', currentTransition);
-  });
-}
-
 function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
@@ -254,38 +228,30 @@ function startTimer() {
 async function init() {
   const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${wsProto}//${location.host}`;
-  let ws = new WebSocket(wsUrl);
 
-  ws.onopen = () => refreshSession();
-  ws.onmessage = (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'update') {
-        if (msg.key === 'session') {
-          session = msg.value;
-          if (msg.sceneTimers) sceneTimers = msg.sceneTimers;
-        } else {
-          session[msg.key] = msg.value;
+  function connectWs() {
+    const ws = new WebSocket(wsUrl);
+    ws.onopen = () => refreshSession();
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'update') {
+          if (msg.key === 'session') {
+            session = msg.value;
+            if (msg.sceneTimers) sceneTimers = msg.sceneTimers;
+          } else {
+            session[msg.key] = msg.value;
+          }
+          refreshSession();
         }
-        refreshSession();
-      } else if (msg.type === 'transition') {
-        currentTransition = msg.value;
-        const sel = $('transitionType');
-        const range = $('transitionDuration');
-        if (sel) sel.value = currentTransition.type || 'cut';
-        if (range) {
-          range.value = currentTransition.duration || 300;
-          $('transitionDurationLabel').textContent = `${range.value}ms`;
-        }
-      }
-    } catch {}
-  };
-  ws.onclose = () => {
-    setStatus(false);
-    setTimeout(() => {
-      ws = new WebSocket(wsUrl);
-    }, 2000);
-  };
+      } catch {}
+    };
+    ws.onclose = () => {
+      setStatus(false);
+      setTimeout(connectWs, 2000);
+    };
+  }
+  connectWs();
 
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action]');
@@ -297,7 +263,7 @@ async function init() {
     if (action === 'show' && id) {
       const cardEl = card;
       cardEl.classList.add('transitioning');
-      await API.post(`/api/scene/${id}/switch`, { transitionType: currentTransition.type, transitionDuration: currentTransition.duration });
+      await API.post(`/api/scene/${id}/switch`);
       showToast(currentTransition.type === 'cut' ? 'Switched scene' : `${currentTransition.type} to scene`);
       setTimeout(refreshSession, 400);
       setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
@@ -331,7 +297,7 @@ async function init() {
     if (!staged) return;
     const cardEl = document.querySelector(`.scene-card[data-id="${staged[0]}"]`);
     if (cardEl) cardEl.classList.add('transitioning');
-    await API.post(`/api/scene/${staged[0]}/switch`, { transitionType: currentTransition.type, transitionDuration: currentTransition.duration });
+    await API.post(`/api/scene/${staged[0]}/switch`);
     showToast(currentTransition.type === 'cut' ? 'Showing next scene' : `${currentTransition.type} to next scene`);
     setTimeout(refreshSession, 400);
     if (cardEl) setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
@@ -396,7 +362,6 @@ async function init() {
     });
   });
 
-  initTransitionBar();
   startTimer();
 }
 
