@@ -9,6 +9,7 @@ function renderAll() {
 
 function applySession(data) {
   session = data.session || data;
+  if (data.version) apiVersion = data.version;
   if (data.sceneTimers) sceneTimers = data.sceneTimers;
   renderAll();
   $('btnStream').textContent = data.isStreaming ? 'Stop Stream' : 'Start Stream';

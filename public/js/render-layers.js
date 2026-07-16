@@ -11,10 +11,15 @@ function renderLayers() {
   // hidden list on every session update. showTab() re-renders it when opened.
   if (!$('tab-layers').classList.contains('active')) return;
 
-  // Don't rebuild the layers list while the user is editing one of its inputs,
-  // or their keystrokes get wiped out by the re-render.
+  // Don't rebuild the layers list while the user is editing one of its text
+  // inputs, or their keystrokes get wiped out by the re-render. Buttons/folds are
+  // fine to redraw under (and must be — a focused toggle button would otherwise
+  // block its own re-render).
   const active = document.activeElement;
-  if (active && container.contains(active)) return;
+  if (active && container.contains(active) && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
+
+  // Don't tear down the transform stage out from under an in-progress drag/resize.
+  if (transformDragging) return;
 
   const scenes = Object.entries(session.items || {})
     .filter(([, v]) => v.type === 'scene')
@@ -71,6 +76,7 @@ function renderLayers() {
     const extraProps = Object.entries(layer).filter(([k]) => !coreProps.has(k));
     const isOpen = expandedProps[id];
     const effectsOpen = expandedProps[`${id}-effects`];
+    const transformOpen = expandedProps[`${id}-transform`];
 
     return `
       <div class="card layer-card" data-id="${id}">
@@ -99,6 +105,13 @@ function renderLayers() {
           <div class="layer-geo-grid">
             <label class="layer-num-wrap">↻ <input type="number" class="layer-num" value="${layer.rotation || 0}" data-layer-id="${id}" data-prop="rotation" step="0.1"></label>
           </div>
+          ${apiVersion >= 2 ? `
+          <div class="layer-fold" data-action="toggle-transform">
+            <span class="layer-fold-icon">${transformOpen ? '▼' : '◳'}</span>
+            <span class="layer-fold-label">Visual editor</span>
+          </div>
+          ${transformOpen ? transformStage(id) : ''}
+          ` : `<div class="transform-hint">Visual editor needs Meld API v2+</div>`}
         </div>
         <div class="layer-section">
           <div class="card-actions">

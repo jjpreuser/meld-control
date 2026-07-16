@@ -11,7 +11,21 @@
       "Bash(curl -s http://127.0.0.1:3000/api/session)",
       "Bash(curl -s http://127.0.0.1:3000/api/debug/meld)",
       "Bash(node \"C:\\\\Users\\\\Jelle\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Jelle-Documents-meld-control-meld-control\\\\208e7c41-a5fb-477b-a048-5bdd5a3bed25\\\\scratchpad\\\\gain-probe.js\")",
-      "Bash(NODE_PATH=\"c:/Users/Jelle/Documents/meld-control/meld control/node_modules\" node \"C:\\\\Users\\\\Jelle\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Jelle-Documents-meld-control-meld-control\\\\208e7c41-a5fb-477b-a048-5bdd5a3bed25\\\\scratchpad\\\\gain-probe.js\")"
+      "Bash(NODE_PATH=\"c:/Users/Jelle/Documents/meld-control/meld control/node_modules\" node \"C:\\\\Users\\\\Jelle\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Jelle-Documents-meld-control-meld-control\\\\208e7c41-a5fb-477b-a048-5bdd5a3bed25\\\\scratchpad\\\\gain-probe.js\")",
+      "WebFetch(domain:github.com)",
+      "Bash(node -c server.js)",
+      "Bash(node --check public/js/transform.js)",
+      "Bash(node --check public/js/render-layers.js)",
+      "Bash(node --check public/js/actions.js)",
+      "Bash(curl -s --max-time 3 http://127.0.0.1:3000/api/version)",
+      "Bash(curl -s --max-time 3 http://127.0.0.1:3000/api/session)",
+      "Bash(curl -s --max-time 3 http://127.0.0.1:3000/js/render-layers.js)",
+      "Bash(curl -s --max-time 3 http://127.0.0.1:3000/index.html)",
+      "Bash(curl -s --max-time 3 -o /dev/null -w \"%{http_code}\\\\n\" -X POST http://127.0.0.1:3000/api/property/TEST/batch -H \"Content-Type: application/json\" -d '{\"props\":{}}')",
+      "Bash(cd \"c:/Users/Jelle/Documents/meld-control/meld control\" && echo \"--- disk render-layers.js toggle-transform count ---\" && grep -c \"toggle-transform\" public/js/render-layers.js && echo \"--- disk index.html transform.js count ---\" && grep -c \"transform.js\" public/index.html && echo \"--- other copies of render-layers.js on system? ---\" && find /c/Users/Jelle -name \"render-layers.js\" -not -path \"*/node_modules/*\" 2>/dev/null)",
+      "Read(//c/Users/Jelle/**)",
+      "Bash(kill %bm21nik6a)",
+      "Bash(docker compose *)"
     ]
   }
 }

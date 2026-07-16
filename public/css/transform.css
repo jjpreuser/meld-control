@@ -1,0 +1,80 @@
+/* Visual layer transform editor (Feature 1) */
+
+.transform-hint {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.transform-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-top: 8px;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 100% 25%,
+    linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 25% 100%,
+    var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  touch-action: none;          /* let pointer drags drive the box, not scroll */
+  user-select: none;
+}
+
+.transform-box {
+  position: absolute;
+  border: 1px dashed var(--text-muted);
+  box-sizing: border-box;
+  transform-origin: center center;
+  pointer-events: none;        /* context outlines aren't interactive */
+}
+
+.transform-box.active {
+  border: 1.5px solid var(--primary);
+  background: rgba(88, 166, 255, 0.12);
+  pointer-events: auto;
+  cursor: move;
+}
+.transform-box.active.dragging {
+  background: rgba(88, 166, 255, 0.22);
+}
+
+.tb-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--primary);
+  border: 1px solid #fff;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+.tb-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.tb-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.tb-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.tb-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+.tb-rotate {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: var(--warning);
+  border: 1px solid #fff;
+  border-radius: 50%;
+  cursor: grab;
+}
+/* stem connecting the rotate handle to the box */
+.tb-rotate::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 1px;
+  height: 10px;
+  margin-left: -0.5px;
+  background: var(--warning);
+}

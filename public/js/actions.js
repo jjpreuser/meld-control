@@ -75,5 +75,11 @@ async function handleAction(btn) {
       expandedProps[`${id}-effects`] = !expandedProps[`${id}-effects`];
       renderLayers();
       break;
+
+    case 'toggle-transform':
+      if (!id) return;
+      expandedProps[`${id}-transform`] = !expandedProps[`${id}-transform`];
+      renderLayers();
+      break;
   }
 }

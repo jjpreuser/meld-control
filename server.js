@@ -262,6 +262,18 @@ async function main() {
     res.json({ ok: true });
   }));
 
+  // Batch variant: set several properties on one object in a single request, so a
+  // drag/resize gesture (x + y + width + height + rotation) is one round-trip
+  // instead of five. setProperty is v2+; the transform UI is gated on that too.
+  app.post('/api/property/:id/batch', api(async (req, res) => {
+    const { props } = req.body || {};
+    if (!props || typeof props !== 'object') return res.status(400).json({ error: 'props object required in body' });
+    for (const [property, value] of Object.entries(props)) {
+      bridge.meld.setProperty(req.params.id, property, value);
+    }
+    res.json({ ok: true, count: Object.keys(props).length });
+  }));
+
   app.post('/api/call-function/:id', api(async (req, res) => {
     const { command, args } = req.body || {};
     if (!command) return res.status(400).json({ error: 'command required in body' });
