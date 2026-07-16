@@ -300,23 +300,6 @@ async function main() {
     res.json(shape);
   }));
 
-  // TODO (Phase 2b — transition control, discovery-gated):
-  // Before building any transition UI we need to know whether Meld exposes
-  // transition methods/properties over QWebChannel. The plan is to add a debug
-  // introspection endpoint here, e.g.:
-  //
-  //   app.get('/api/debug/meld', api(async (req, res) => {
-  //     const shape = {};
-  //     for (const key of Object.keys(bridge.meld)) shape[key] = typeof bridge.meld[key];
-  //     res.json(shape);
-  //   }));
-  //
-  // Run the bridge against a live Meld, hit this endpoint, and inspect the dump
-  // for anything transition-related (e.g. setTransition / transitionDuration /
-  // transitionType). If found -> build the transition-bar (the orphan CSS in
-  // style.css) + a POST endpoint and wire it up. If not found -> delete that CSS
-  // block and drop the feature. Left as a TODO until we can do it live.
-
   app.post('/api/scene/:id/switch', api(async (req, res) => {
     bridge.meld.showScene(req.params.id);
     res.json({ ok: true });
