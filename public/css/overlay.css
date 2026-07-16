@@ -1,0 +1,126 @@
+/* Disconnect overlay + the (currently orphaned) transition bar */
+
+/* Disconnected overlay */
+.disconnect-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 17, 23, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.disconnect-overlay.hidden {
+  display: none;
+}
+
+.disconnect-card {
+  text-align: center;
+  padding: 28px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 300px;
+}
+
+.disconnect-card h2 {
+  font-size: 18px;
+  margin: 14px 0 6px;
+}
+
+.disconnect-card p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.disconnect-spinner {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: disconnect-spin 0.8s linear infinite;
+}
+
+@keyframes disconnect-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Transition Bar
+ * NOTE: These styles are intentionally kept but currently orphaned — no HTML
+ * uses them yet. They belong to Phase 2b (scene-transition control), which is
+ * gated on discovery against a live Meld: we don't yet know whether Meld exposes
+ * transition methods/properties over QWebChannel. Once discovery confirms the
+ * API (see the debug-endpoint TODO in server.js), the transition-bar UI gets
+ * built against these styles. If Meld turns out not to expose it, delete this
+ * block. Do not remove until that discovery happens. */
+.transition-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.t-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.transition-bar select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.transition-bar input[type="range"] {
+  flex: 1;
+  min-width: 80px;
+  max-width: 160px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.transition-bar input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: none;
+  cursor: pointer;
+}
+
+.transition-bar input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: none;
+  cursor: pointer;
+}
+
+#transitionDurationLabel {
+  font-size: 12px;
+  font-family: monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 40px;
+}

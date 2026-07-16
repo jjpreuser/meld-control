@@ -4,7 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Meld Studio Remote</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/buttons.css">
+  <link rel="stylesheet" href="/css/header.css">
+  <link rel="stylesheet" href="/css/tabs.css">
+  <link rel="stylesheet" href="/css/scenes.css">
+  <link rel="stylesheet" href="/css/layers.css">
+  <link rel="stylesheet" href="/css/audio.css">
+  <link rel="stylesheet" href="/css/commands.css">
+  <link rel="stylesheet" href="/css/overlay.css">
 </head>
 <body>
   <header>
@@ -95,8 +103,17 @@
     </div>
   </div>
 
-  <script src="/api.js"></script>
-  <script src="/render.js"></script>
-  <script src="/app.js"></script>
+  <!-- Load order matters: these scripts share globals (no bundler/modules). -->
+  <!-- Helpers + state first, then renderers, then actions, then the entry point. -->
+  <script src="/js/dom.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/state.js"></script>
+  <script src="/js/render-scenes.js"></script>
+  <script src="/js/render-layers.js"></script>
+  <script src="/js/render-audio.js"></script>
+  <script src="/js/render.js"></script>
+  <script src="/js/actions.js"></script>
+  <script src="/js/main.js"></script>
 </body>
 </html>

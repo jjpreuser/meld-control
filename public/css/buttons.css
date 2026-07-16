@@ -1,0 +1,36 @@
+/* Generic button + variants. Component-specific buttons (btn-next, btn-cmd,
+ * btn-xs/on/off) live with their components in scenes/commands/layers css. */
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-stream { border-color: var(--primary); color: var(--primary); }
+.btn-stream:hover { background: var(--primary); color: #fff; }
+.btn-stream.active { background: var(--primary); color: #fff; }
+
+.btn-record { border-color: var(--danger); color: var(--danger); }
+.btn-record:hover { background: var(--danger); color: #fff; }
+.btn-screenshot { border-color: var(--border); color: var(--text-muted); font-size: 16px; padding: 8px 10px; line-height: 1; }
+.btn-screenshot:hover { border-color: var(--text); color: var(--text); }
+
+.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary.active { background: var(--primary); }
+.btn-outline { background: transparent; border-color: var(--border); }
+.btn-warning { background: var(--warning); border-color: var(--warning); color: #000; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-back { background: transparent; border: none; color: var(--primary); font-size: 14px; padding: 4px 0; }
