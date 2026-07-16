@@ -3,6 +3,7 @@ let selectedSceneId = null;
 let sceneTimers = {};
 let timerInterval = null;
 const expandedProps = {};
+const gainTimers = {};
 
 async function refreshSession() {
   try {
@@ -11,6 +12,95 @@ async function refreshSession() {
   } catch {
     setStatus(false);
     setTimeout(refreshSession, 1000);
+  }
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  const content = document.getElementById(`tab-${name}`);
+  if (content) content.classList.add('active');
+  // Render the tab we're switching to now that it's visible (renderLayers/renderAudio
+  // bail when their tab is hidden, so this is where they get drawn).
+  if (name === 'layers') renderLayers();
+  if (name === 'audio') renderAudio();
+}
+
+async function postGain(trackId) {
+  const slider = document.querySelector(`.gain-slider[data-track-id="${trackId}"]`);
+  if (!slider) return;
+  clearTimeout(gainTimers[trackId]);
+  await API.post(`/api/track/${trackId}/gain`, { gain: parseFloat(slider.value) }).catch(() => {});
+}
+
+async function handleAction(btn) {
+  const action = btn.dataset.action;
+  const card = btn.closest('[data-id]');
+  const id = card ? card.dataset.id : null;
+
+  switch (action) {
+    case 'layers':
+      if (!id) return;
+      selectedSceneId = id;
+      showTab('layers');
+      break;
+
+    case 'show':
+      if (!id) return;
+      card.classList.add('transitioning');
+      await API.post(`/api/scene/${id}/switch`);
+      showToast('Switched scene');
+      setTimeout(refreshSession, 400);
+      setTimeout(() => card.classList.remove('transitioning'), 1500);
+      break;
+
+    case 'stage':
+      if (!id) return;
+      await API.post(`/api/scene/${id}/stage`);
+      showToast('Staged scene');
+      setTimeout(refreshSession, 300);
+      break;
+
+    case 'toggle-vis':
+      if (!selectedSceneId || !id) return;
+      await API.post(`/api/layer/${id}/toggle`, { sceneId: selectedSceneId });
+      setTimeout(refreshSession, 300);
+      break;
+
+    case 'mute':
+      await API.post(`/api/track/${btn.dataset.trackId}/mute`);
+      setTimeout(refreshSession, 300);
+      break;
+
+    case 'monitor':
+      await API.post(`/api/track/${btn.dataset.trackId}/monitor`);
+      setTimeout(refreshSession, 300);
+      break;
+
+    case 'toggle-effect': {
+      const { effectId, layerId } = btn.dataset;
+      if (!selectedSceneId || !layerId || !effectId) return;
+      await API.post(`/api/effect/${effectId}/toggle`, { sceneId: selectedSceneId, layerId });
+      setTimeout(refreshSession, 300);
+      break;
+    }
+
+    case 'pick-scene':
+      selectedSceneId = btn.dataset.sceneId;
+      renderLayers();
+      break;
+
+    case 'toggle-props':
+      if (!id) return;
+      expandedProps[id] = !expandedProps[id];
+      renderLayers();
+      break;
+
+    case 'toggle-effects':
+      if (!id) return;
+      expandedProps[`${id}-effects`] = !expandedProps[`${id}-effects`];
+      renderLayers();
+      break;
   }
 }
 
@@ -32,6 +122,15 @@ async function init() {
             session[msg.key] = msg.value;
           }
           refreshSession();
+        } else if (msg.type === 'gain') {
+          // Discovery against live Meld (2026-07-16): gainUpdated does not fire on
+          // setGain and never reported a stored fader value — it's most likely a
+          // live audio meter. So the fader is write-only: we sync mute state from
+          // this event but deliberately do NOT move the slider (would jitter with
+          // metering). msg.gain is intentionally ignored.
+          const track = session.items && session.items[msg.trackId];
+          if (track && msg.muted != null) track.muted = msg.muted;
+          updateTrackCard(msg.trackId, null, msg.muted);
         }
       } catch {}
     };
@@ -42,61 +141,51 @@ async function init() {
   }
   connectWs();
 
+  // One delegated click handler for the whole document, dispatching by attribute.
   document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const action = btn.dataset.action;
-    const card = btn.closest('[data-id]');
-    const id = card ? card.dataset.id : null;
-
-    if (action === 'show' && id) {
-      const cardEl = card;
-      cardEl.classList.add('transitioning');
-      await API.post(`/api/scene/${id}/switch`);
-      showToast('Switched scene');
-      setTimeout(refreshSession, 400);
-      setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
-    } else if (action === 'stage' && id) {
-      await API.post(`/api/scene/${id}/stage`);
-      showToast('Staged scene');
-      setTimeout(refreshSession, 300);
-    } else if (action === 'toggle-vis') {
-      const layerId = card ? card.dataset.id : null;
-      if (!selectedSceneId || !layerId) return;
-      await API.post(`/api/layer/${layerId}/toggle`, { sceneId: selectedSceneId });
-      setTimeout(refreshSession, 300);
-    } else if (action === 'track-mute') {
-      const { trackId } = btn.dataset;
-      await API.post(`/api/track/${trackId}/mute`);
-      setTimeout(refreshSession, 300);
-    } else if (action === 'mute') {
-      const { trackId } = btn.dataset;
-      await API.post(`/api/track/${trackId}/mute`);
-      setTimeout(refreshSession, 300);
-    } else if (action === 'monitor') {
-      const { trackId } = btn.dataset;
-      await API.post(`/api/track/${trackId}/monitor`);
-      setTimeout(refreshSession, 300);
-    } else if (action === 'toggle-effect') {
-      const effectId = btn.dataset.effectId;
-      const layerId = btn.dataset.layerId;
-      if (!selectedSceneId || !layerId || !effectId) return;
-      await API.post(`/api/effect/${effectId}/toggle`, { sceneId: selectedSceneId, layerId });
-      setTimeout(refreshSession, 300);
-    } else if (action === 'pick-scene') {
-      selectedSceneId = btn.dataset.sceneId;
-      renderLayers();
-    } else if (action === 'toggle-props') {
-      const card = btn.closest('[data-id]');
-      if (!card) return;
-      expandedProps[card.dataset.id] = !expandedProps[card.dataset.id];
-      renderLayers();
-    } else if (action === 'toggle-effects') {
-      const card = btn.closest('[data-id]');
-      if (!card) return;
-      expandedProps[`${card.dataset.id}-effects`] = !expandedProps[`${card.dataset.id}-effects`];
-      renderLayers();
+    const actionBtn = e.target.closest('[data-action]');
+    if (actionBtn && actionBtn.dataset.action !== 'stream' && actionBtn.dataset.action !== 'record') {
+      return handleAction(actionBtn);
     }
+
+    const cmdBtn = e.target.closest('[data-cmd]');
+    if (cmdBtn) {
+      await API.post('/api/command', { command: cmdBtn.dataset.cmd });
+      showToast(`Command: ${cmdBtn.dataset.cmd}`);
+      return;
+    }
+
+    const eventBtn = e.target.closest('[data-event]');
+    if (eventBtn) {
+      await API.post('/api/stream-event', { type: eventBtn.dataset.event });
+      showToast(`Event: ${eventBtn.dataset.event}`);
+    }
+  });
+
+  // One delegated change handler: layer property edits + gain slider release.
+  document.addEventListener('change', async (e) => {
+    const slider = e.target.closest('.gain-slider');
+    if (slider) return postGain(slider.dataset.trackId);
+
+    const input = e.target.closest('[data-prop]');
+    if (!input) return;
+    const value = input.type === 'number' ? parseFloat(input.value) : input.value;
+    try {
+      await API.post(`/api/property/${input.dataset.layerId}`, { property: input.dataset.prop, value });
+      showToast(`${input.dataset.prop}: ${value}`);
+    } catch {}
+  });
+
+  // Live readout while dragging a fader; debounced POST so we don't flood the bridge.
+  document.addEventListener('input', (e) => {
+    const slider = e.target.closest('.gain-slider');
+    if (!slider) return;
+    const trackId = slider.dataset.trackId;
+    const gain = parseFloat(slider.value);
+    const readout = document.querySelector(`[data-gain-readout="${trackId}"]`);
+    if (readout) readout.textContent = `${Math.round(gain * 100)}%`;
+    clearTimeout(gainTimers[trackId]);
+    gainTimers[trackId] = setTimeout(() => postGain(trackId), 120);
   });
 
   document.getElementById('btnShowNext').addEventListener('click', async () => {
@@ -109,36 +198,6 @@ async function init() {
     showToast('Showing next scene');
     setTimeout(refreshSession, 400);
     if (cardEl) setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
-  });
-
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action="layers"]');
-    if (!btn) return;
-    const card = btn.closest('[data-id]');
-    if (!card) return;
-    selectedSceneId = card.dataset.id;
-    renderLayers();
-    document.querySelector('[data-tab="layers"]').click();
-  });
-
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-cmd]');
-    if (!btn) return;
-    const cmd = btn.dataset.cmd;
-    if (cmd) {
-      await API.post('/api/command', { command: cmd });
-      showToast(`Command: ${cmd}`);
-    }
-  });
-
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-event]');
-    if (!btn) return;
-    const eventType = btn.dataset.event;
-    if (eventType) {
-      await API.post('/api/stream-event', { type: eventType });
-      showToast(`Event: ${eventType}`);
-    }
   });
 
   document.getElementById('btnScreenshot').addEventListener('click', async () => {
@@ -158,16 +217,11 @@ async function init() {
 
   document.getElementById('btnBackScenes').addEventListener('click', () => {
     selectedSceneId = null;
-    document.querySelector('[data-tab="scenes"]').click();
+    showTab('scenes');
   });
 
   document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
-    });
+    tab.addEventListener('click', () => showTab(tab.dataset.tab));
   });
 
   startTimer();

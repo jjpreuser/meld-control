@@ -51,6 +51,15 @@ function renderLayers() {
   const title = $('layerSceneName');
   const picker = $('scenePicker');
 
+  // Skip entirely when the Layers tab isn't showing — no point rebuilding a
+  // hidden list on every session update. showTab() re-renders it when opened.
+  if (!$('tab-layers').classList.contains('active')) return;
+
+  // Don't rebuild the layers list while the user is editing one of its inputs,
+  // or their keystrokes get wiped out by the re-render.
+  const active = document.activeElement;
+  if (active && container.contains(active)) return;
+
   const scenes = Object.entries(session.items || {})
     .filter(([, v]) => v.type === 'scene')
     .sort((a, b) => (a[1].index || 0) - (b[1].index || 0));
@@ -138,7 +147,7 @@ function renderLayers() {
         <div class="layer-section">
           <div class="card-actions">
             <button class="btn btn-sm ${layer.visible ? 'btn-primary active' : 'btn-outline'}" data-action="toggle-vis">${layer.visible ? 'Visible' : 'Hidden'}</button>
-            ${track ? `<button class="btn btn-sm ${track.muted ? 'btn-danger' : 'btn-outline'}" data-action="track-mute" data-track-id="${track.id}">${track.muted ? 'Muted' : 'Mute'}</button>` : ''}
+            ${track ? `<button class="btn btn-sm ${track.muted ? 'btn-danger' : 'btn-outline'}" data-action="mute" data-track-id="${track.id}">${track.muted ? 'Muted' : 'Mute'}</button>` : ''}
           </div>
         </div>
         ${extraProps.length ? `
@@ -164,22 +173,25 @@ function renderLayers() {
       </div>
     `;
   }).join('');
-
-  container.addEventListener('change', async (e) => {
-    const input = e.target.closest('[data-prop]');
-    if (!input) return;
-    const layerId = input.dataset.layerId;
-    const prop = input.dataset.prop;
-    const value = input.type === 'number' ? parseFloat(input.value) : input.value;
-    try {
-      await API.post(`/api/property/${layerId}`, { property: prop, value });
-      showToast(`${prop}: ${value}`);
-    } catch {}
-  });
 }
+
+// Gain is a linear multiplier (1.0 = unity / 0 dB). The slider attenuates from
+// silence up to unity; discovery (Phase 2a #8) may widen the max if Meld reports
+// boost above 1.0 — GAIN_MAX is the one knob to change if so.
+const GAIN_MAX = 1;
+const gainPct = (g) => `${Math.round((g == null ? 1 : g) * 100)}%`;
 
 function renderAudio() {
   const container = $('trackList');
+
+  // Skip when the Audio tab isn't showing; showTab() draws it when opened.
+  if (!$('tab-audio').classList.contains('active')) return;
+
+  // Don't rebuild while a fader is being dragged (or a card focused) — it would
+  // snap the slider back mid-gesture.
+  const active = document.activeElement;
+  if (active && container.contains(active)) return;
+
   const tracks = Object.entries(session.items || {})
     .filter(([, v]) => v.type === 'track')
     .sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
@@ -188,11 +200,16 @@ function renderAudio() {
     const isGlobal = !track.parent;
     const icon = isGlobal ? '🎤' : '🔊';
     const sceneName = track.parent ? (session.items[track.parent]?.name || '') : '';
+    const gain = track.gain == null ? 1 : track.gain;
     return `
       <div class="card track-card" data-id="${id}">
         <div class="card-body">
           <span class="card-name">${icon} ${escHtml(track.name)}</span>
           ${sceneName ? `<span class="card-badge">${escHtml(sceneName)}</span>` : '<span class="card-badge global">Global</span>'}
+        </div>
+        <div class="track-fader">
+          <input type="range" class="gain-slider" min="0" max="${GAIN_MAX}" step="0.01" value="${gain}" data-track-id="${id}" aria-label="Gain for ${escHtml(track.name)}">
+          <span class="gain-readout" data-gain-readout="${id}">${gainPct(gain)}</span>
         </div>
         <div class="card-actions">
           <button class="btn btn-sm ${track.muted ? 'btn-danger active' : 'btn-outline'}" data-action="mute" data-track-id="${id}">${track.muted ? 'Muted' : 'Mute'}</button>
@@ -201,6 +218,26 @@ function renderAudio() {
       </div>
     `;
   }).join('');
+}
+
+// Live-update one track card in place from a WS `gain` message, without rebuilding
+// the whole list (which would clobber a fader the user is mid-drag on).
+function updateTrackCard(trackId, gain, muted) {
+  const card = document.querySelector(`.track-card[data-id="${trackId}"]`);
+  if (!card) return;
+  const slider = card.querySelector('.gain-slider');
+  const readout = card.querySelector(`[data-gain-readout="${trackId}"]`);
+  if (gain != null && slider && document.activeElement !== slider) {
+    slider.value = gain;
+    if (readout) readout.textContent = gainPct(gain);
+  }
+  if (muted != null) {
+    const muteBtn = card.querySelector('[data-action="mute"]');
+    if (muteBtn) {
+      muteBtn.textContent = muted ? 'Muted' : 'Mute';
+      muteBtn.className = `btn btn-sm ${muted ? 'btn-danger active' : 'btn-outline'}`;
+    }
+  }
 }
 
 function renderAll() {

@@ -1,7 +1,6 @@
 services:
   meld-control:
     build: .
-    container_name: meld-control
     ports:
       - "3000:3000"
     environment:

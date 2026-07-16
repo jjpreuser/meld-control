@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check server.js)",
+      "Bash(node --check public/app.js)",
+      "Bash(node --check public/render.js)",
+      "Bash(grep -iE \"server.log|\\\\.log$\")",
+      "Bash(node --check public/api.js)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(node server.js)",
+      "Bash(curl -s http://127.0.0.1:3000/api/session)",
+      "Bash(curl -s http://127.0.0.1:3000/api/debug/meld)",
+      "Bash(node \"C:\\\\Users\\\\Jelle\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Jelle-Documents-meld-control-meld-control\\\\208e7c41-a5fb-477b-a048-5bdd5a3bed25\\\\scratchpad\\\\gain-probe.js\")",
+      "Bash(NODE_PATH=\"c:/Users/Jelle/Documents/meld-control/meld control/node_modules\" node \"C:\\\\Users\\\\Jelle\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Jelle-Documents-meld-control-meld-control\\\\208e7c41-a5fb-477b-a048-5bdd5a3bed25\\\\scratchpad\\\\gain-probe.js\")"
+    ]
+  }
+}
