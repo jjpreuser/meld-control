@@ -78,22 +78,6 @@ async function init() {
       return;
     }
 
-    const eventBtn = e.target.closest('[data-event]');
-    if (eventBtn) {
-      // Widgets that need data (subathon add-time) carry data-amount-from pointing
-      // at their number input; everything else is a bare { type }.
-      let body = { type: eventBtn.dataset.event };
-      const amountFrom = eventBtn.dataset.amountFrom;
-      if (amountFrom) {
-        const input = document.querySelector(`[data-widget-amount="${amountFrom}"]`);
-        const amount = input ? parseInt(input.value, 10) : NaN;
-        if (!isNaN(amount)) body.data = { [eventBtn.dataset.amountKey || 'amount']: amount };
-      }
-      await API.post('/api/stream-event', body);
-      showToast(`Event: ${eventBtn.dataset.event}`);
-      return;
-    }
-
     const modeBtn = e.target.closest('[data-scene-mode]');
     if (modeBtn) {
       sceneMode = modeBtn.dataset.sceneMode;
@@ -114,10 +98,6 @@ async function init() {
     const slider = e.target.closest('.gain-slider');
     if (slider) return postGain(slider.dataset.trackId);
 
-    // Media scrub release → fire seekTo with absolute seconds (Feature 2).
-    const seek = e.target.closest('.media-seek');
-    if (seek) return mediaSeek(seek.dataset.layerId, parseInt(seek.value, 10));
-
     const input = e.target.closest('[data-prop]');
     if (!input) return;
     const value = input.type === 'number' ? parseFloat(input.value) : input.value;
@@ -137,14 +117,6 @@ async function init() {
       if (readout) readout.textContent = `${Math.round(gain * 100)}%`;
       clearTimeout(gainTimers[trackId]);
       gainTimers[trackId] = setTimeout(() => postGain(trackId), 120);
-      return;
-    }
-
-    // Media scrub: update the seconds readout live (fire-and-forget POST on release).
-    const seek = e.target.closest('.media-seek');
-    if (seek) {
-      const readout = document.querySelector(`[data-seek-readout="${seek.dataset.layerId}"]`);
-      if (readout) readout.textContent = fmtSeconds(parseInt(seek.value, 10));
     }
   });
 
@@ -184,9 +156,8 @@ async function init() {
     tab.addEventListener('click', () => showTab(tab.dataset.tab));
   });
 
-  // Command deck + widgets are catalog-driven and stateless — render them once.
+  // Command deck is catalog-driven and stateless — render it once.
   renderCommands();
-  renderWidgets();
 
   startTimer();
 }

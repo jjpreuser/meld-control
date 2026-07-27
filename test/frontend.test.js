@@ -1,13 +1,13 @@
 // Unit tests for the DOM-free frontend logic in public/js/catalog.js — the
-// catalogs that drive the command deck & widgets, plus the pure helpers used by
-// the audio / media / switcher renderers. These run in plain node (no jsdom): the
+// catalog that drives the command deck, plus the pure helpers used by the audio /
+// media / switcher renderers. These run in plain node (no jsdom): the
 // module.exports guard at the bottom of catalog.js exposes them here while staying
 // a no-op in the browser.
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  COMMAND_GROUPS, WIDGETS, isMediaLayer, groupTracks, busScenes, gainPctOf,
+  COMMAND_GROUPS, isMediaLayer, groupTracks, busScenes, gainPctOf,
 } = require('../public/js/catalog.js');
 
 describe('command catalog  [Feature 3]', () => {
@@ -30,28 +30,6 @@ describe('command catalog  [Feature 3]', () => {
   test('every command has a label', () => {
     for (const g of COMMAND_GROUPS)
       for (const c of g.commands) assert.ok(c.label && c.label.length, `${c.cmd} has no label`);
-  });
-});
-
-describe('widget catalog  [Feature 4]', () => {
-  const allTypes = WIDGETS.flatMap((w) => w.events.map((e) => e.type));
-
-  test('covers every documented widget event type', () => {
-    const expected = [
-      'STOPWATCH_RESET', 'STOPWATCH_PAUSE', 'STOPWATCH_RESUME',
-      'COUNTDOWN_RESET', 'COUNTDOWN_PAUSE', 'COUNTDOWN_RESUME',
-      'CONFETTIFALL_TRIGGER', 'CONFETTIPOP_TRIGGER',
-      'SUBATHONTIMER_RESET', 'SUBATHONTIMER_PAUSE', 'SUBATHONTIMER_RESUME', 'SUBATHONTIMER_ADDTIME',
-      'WHEELSPIN_SPIN', 'COUNTER_INCREMENT', 'COUNTER_DECREMENT',
-    ];
-    assert.deepEqual([...allTypes].sort(), [...expected].sort());
-  });
-
-  test('only SUBATHONTIMER_ADDTIME carries a dataKey', () => {
-    const withData = WIDGETS.flatMap((w) => w.events).filter((e) => e.dataKey);
-    assert.equal(withData.length, 1);
-    assert.equal(withData[0].type, 'SUBATHONTIMER_ADDTIME');
-    assert.equal(withData[0].dataKey, 'amount');
   });
 });
 

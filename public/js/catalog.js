@@ -44,58 +44,6 @@ const COMMAND_GROUPS = [
   },
 ];
 
-// ---- Feature 4: stream-widget catalog --------------------------------------
-// One card per on-stream widget; each button dispatches sendStreamEvent(type) →
-// POST /api/stream-event. SUBATHONTIMER_ADDTIME is the only event needing data
-// ({ amount }); we mark it so the renderer draws an amount input.
-const WIDGETS = [
-  {
-    id: 'stopwatch', name: 'Stopwatch', icon: '⏱️',
-    events: [
-      { type: 'STOPWATCH_RESET', label: 'Reset' },
-      { type: 'STOPWATCH_PAUSE', label: 'Pause' },
-      { type: 'STOPWATCH_RESUME', label: 'Resume' },
-    ],
-  },
-  {
-    id: 'countdown', name: 'Countdown', icon: '⏳',
-    events: [
-      { type: 'COUNTDOWN_RESET', label: 'Reset' },
-      { type: 'COUNTDOWN_PAUSE', label: 'Pause' },
-      { type: 'COUNTDOWN_RESUME', label: 'Resume' },
-    ],
-  },
-  {
-    id: 'confetti', name: 'Confetti', icon: '🎉',
-    events: [
-      { type: 'CONFETTIFALL_TRIGGER', label: 'Fall' },
-      { type: 'CONFETTIPOP_TRIGGER', label: 'Pop' },
-    ],
-  },
-  {
-    id: 'subathon', name: 'Subathon Timer', icon: '💰',
-    events: [
-      { type: 'SUBATHONTIMER_RESET', label: 'Reset' },
-      { type: 'SUBATHONTIMER_PAUSE', label: 'Pause' },
-      { type: 'SUBATHONTIMER_RESUME', label: 'Resume' },
-      { type: 'SUBATHONTIMER_ADDTIME', label: 'Add Time', dataKey: 'amount' },
-    ],
-  },
-  {
-    id: 'wheel', name: 'Wheel', icon: '🎡',
-    events: [
-      { type: 'WHEELSPIN_SPIN', label: 'Spin' },
-    ],
-  },
-  {
-    id: 'counter', name: 'Counter', icon: '🔢',
-    events: [
-      { type: 'COUNTER_INCREMENT', label: '+1' },
-      { type: 'COUNTER_DECREMENT', label: '-1' },
-    ],
-  },
-];
-
 // ---- Feature 2: media-layer detection --------------------------------------
 // A layer is "media" (transport-controllable) iff it carries a mediaSource.
 function isMediaLayer(layer) {
@@ -179,5 +127,5 @@ function gainPctOf(g) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { COMMAND_GROUPS, WIDGETS, isMediaLayer, groupTracks, busScenes, gainPctOf };
+  module.exports = { COMMAND_GROUPS, isMediaLayer, groupTracks, busScenes, gainPctOf };
 }

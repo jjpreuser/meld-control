@@ -136,7 +136,11 @@ This lets us build a transport bar (play / pause / scrub) for video/audio media 
 
 ---
 
-## Feature 3 — One-tap command deck (`sendCommand`)
+## Feature 3 — One-tap command deck (`sendCommand`) — ✅ SHIPPED
+
+> **Built (2026-07-27):** grouped command deck (Capture / Camera / Streaming /
+> Recording) with explicit `start*/stop*` variants. Deeper clip/replay workflow is
+> being designed separately in [REPLAY_PLAN.md](REPLAY_PLAN.md).
 
 **Impact: medium. Effort: low.**
 
@@ -167,7 +171,14 @@ Each is a single `POST /api/command` with `{ command }`. Stateless, fire-and-for
 
 ---
 
-## Feature 4 — Stream widgets tab (`sendStreamEvent`)
+## Feature 4 — Stream widgets tab (`sendStreamEvent`) — ❌ SCRAPPED
+
+> **Removed (2026-07-27):** the Widgets tab was built and then scrapped — the
+> events didn't reliably trigger the on-stream widgets against the live build
+> (likely a precondition the docs don't state, e.g. the widget must exist in the
+> active scene). The generic `POST /api/stream-event` bridge endpoint is kept for
+> future use; the UI, catalog, and CSS were removed. Revisit if the trigger
+> conditions get pinned down.
 
 **Impact: medium (high fun-value). Effort: low.**
 
@@ -220,7 +231,11 @@ Turn the existing stage endpoints into a proper vision-mixer layout:
 
 ---
 
-## Feature 6 — Live audio feedback (`gainUpdated` + track observers)
+## Feature 6 — Live audio feedback (`gainUpdated` + track observers) — ◐ PARTIAL
+
+> **Built (2026-07-27):** track observers register/unregister with the Audio tab;
+> mute syncs live. Fader stays write-only pending the meter-vs-value question —
+> being worked out in [AUDIO_PLAN.md](AUDIO_PLAN.md).
 
 **Impact: medium. Effort: medium.**
 

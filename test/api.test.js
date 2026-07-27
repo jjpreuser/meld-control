@@ -156,7 +156,9 @@ describe('command deck  [Feature 3]', () => {
   }
 });
 
-describe('stream widgets  [Feature 4]', () => {
+// The stream-event bridge endpoint remains (the bridge wraps the full WebChannel
+// API) even though the Widgets UI was removed. These guard the bridge contract.
+describe('stream-event bridge endpoint', () => {
   test('POST /api/stream-event needs type', async () => {
     const { status } = await post(url(), '/api/stream-event', {});
     assert.equal(status, 400);

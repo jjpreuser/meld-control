@@ -61,7 +61,7 @@ Every route in `server.js` is exercised:
 | `POST /api/stream/toggle` | `toggleStream()` | transport |
 | `POST /api/record/toggle` | `toggleRecord()` | transport |
 | `POST /api/command` | `sendCommand(cmd)` for all 10 deck commands + 400 | 3 |
-| `POST /api/stream-event` | `sendStreamEvent(type)` and `(type, data)` + 400 | 4 |
+| `POST /api/stream-event` | `sendStreamEvent(type)` and `(type, data)` + 400 (bridge only; Widgets UI removed) | — |
 | `POST /api/property/:id` | `setProperty(id, prop, value)` incl. rename + 400 | 1 |
 | `POST /api/property/:id/batch` | one `setProperty` per prop, correct order + `count` + 400 | 1 |
 | `POST /api/call-function/:id` | `callFunction(id, cmd)` and `callFunctionWithArgs(id, cmd, args)` + 400 | 2 |
@@ -72,7 +72,6 @@ Every route in `server.js` is exercised:
 | Suite | Asserts | Feature |
 |-------|---------|---------|
 | command catalog | includes explicit `start*/stop*` stream+record variants, all capture/camera commands, every command has a label | 3 |
-| widget catalog | covers exactly the 15 documented event types; only `SUBATHONTIMER_ADDTIME` carries a `dataKey: "amount"` | 4 |
 | `isMediaLayer` | true only when `mediaSource` present | 2 |
 | `groupTracks` | global tracks → global group; layer-parented track resolves **layer → scene**; unresolvable parent → "Other" (never dropped); scenes ordered by index; empty input safe | 7 |
 | `busScenes` | picks `current` (PGM) and `staged` (PVW); null when none flagged; excludes non-scenes | 5 |
@@ -113,7 +112,6 @@ data):
 
 ```bash
 HTTP_PORT=3999 node server.js
-curl -s http://127.0.0.1:3999/ | grep -c 'data-tab="widgets"'   # -> 1
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/js/catalog.js  # -> 200
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/api/session    # -> 503 (no Meld)
 ```
@@ -126,12 +124,10 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/api/session    # 
 - [ ] On API v1, the visual editor is replaced by a "needs v2+" hint.
 
 ### Feature 2 — Media playback controls
-- [ ] A layer with a `mediaSource` shows a **Media** section with Play / Pause and
-      a scrub bar; layers without one do not.
+- [ ] A layer with a `mediaSource` shows a **Media** section with Play / Pause;
+      layers without one do not.
 - [ ] Play → media plays in Meld; Pause → pauses.
-- [ ] Drag the scrub bar → the seconds readout updates live; on release Meld seeks
-      to that absolute time.
-- [ ] The "fire-and-forget / no live playhead" note is visible.
+- [ ] (No scrub bar — the API exposes no playhead, so it was removed.)
 
 ### Feature 3 — Command deck
 - [ ] Commands tab shows grouped decks: **Capture / Camera / Streaming / Recording**.
@@ -140,13 +136,9 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/api/session    # 
 - [ ] Start/Stop Stream and Start/Stop Record use the explicit variants (a toast
       appears; state can't drift because start≠stop).
 
-### Feature 4 — Widgets tab
-- [ ] A **Widgets** tab exists with one card per widget: Stopwatch, Countdown,
-      Confetti, Subathon Timer, Wheel, Counter.
-- [ ] Each button fires its event (verify against the on-stream widget in Meld).
-- [ ] Subathon **Add Time** reads the number input and sends `{ amount }`
-      (default 60). Change the amount and confirm the timer jumps by that many
-      seconds.
+### Feature 4 — Widgets tab — REMOVED
+Scrapped per request (widgets didn't trigger reliably against the live build). The
+generic `POST /api/stream-event` bridge endpoint remains for future use.
 
 ### Feature 5 — Program/Preview switcher
 - [ ] Scenes tab has a **Simple / Switcher** toggle.
