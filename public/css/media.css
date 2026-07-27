@@ -1,0 +1,36 @@
+/* Feature 2 — Media playback transport inside a layer card */
+.media-transport {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.media-scrub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.media-seek {
+  flex: 1;
+  accent-color: var(--primary);
+}
+
+.media-seek-readout {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 42px;
+  text-align: right;
+}
+
+.media-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}

@@ -8,5 +8,11 @@ let transformDragging = false;    // true while a transform-stage gesture is in 
 let selectedSceneId = null;       // which scene the Layers tab is showing
 let sceneTimers = {};             // sceneId -> Date.now() when it went live
 let timerInterval = null;         // handle for the 1s live-timer tick
+let sceneMode = 'simple';         // 'simple' tap-to-switch, or 'switcher' PGM/PVW (Feature 5)
 const expandedProps = {};         // layer fold open/closed flags, keyed by id
 const gainTimers = {};            // per-track debounce handles for gain POSTs
+
+// Feature 6: which tracks we've asked Meld to stream detailed updates for, and
+// the context string every register/unregister call is tagged with.
+const observedTracks = new Set();
+const OBSERVER_CTX = 'meld-control-web';

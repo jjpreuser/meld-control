@@ -119,6 +119,11 @@ function renderLayers() {
             ${track ? `<button class="btn btn-sm ${track.muted ? 'btn-danger' : 'btn-outline'}" data-action="mute" data-track-id="${track.id}">${track.muted ? 'Muted' : 'Mute'}</button>` : ''}
           </div>
         </div>
+        ${isMediaLayer(layer) ? `
+        <div class="layer-section">
+          <div class="layer-section-title">Media</div>
+          ${mediaTransport(id)}
+        </div>` : ''}
         ${extraProps.length ? `
         <div class="layer-fold" data-action="toggle-props" data-fold="${id}">
           <span class="layer-fold-icon">${isOpen ? '▼' : '▶'}</span>

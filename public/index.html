@@ -13,6 +13,9 @@
   <link rel="stylesheet" href="/css/transform.css">
   <link rel="stylesheet" href="/css/audio.css">
   <link rel="stylesheet" href="/css/commands.css">
+  <link rel="stylesheet" href="/css/widgets.css">
+  <link rel="stylesheet" href="/css/media.css">
+  <link rel="stylesheet" href="/css/switcher.css">
   <link rel="stylesheet" href="/css/overlay.css">
 </head>
 <body>
@@ -47,11 +50,17 @@
     <button class="tab" data-tab="layers">Layers</button>
     <button class="tab" data-tab="audio">Audio</button>
     <button class="tab" data-tab="commands">Commands</button>
+    <button class="tab" data-tab="widgets">Widgets</button>
   </nav>
 
   <main>
     <section id="tab-scenes" class="tab-content active">
+      <div id="sceneModeToggle" class="scene-mode-toggle">
+        <button class="btn btn-sm" data-scene-mode="simple">Simple</button>
+        <button class="btn btn-sm" data-scene-mode="switcher">Switcher</button>
+      </div>
       <div id="sceneList" class="scene-grid"></div>
+      <div id="sceneSwitcher" class="scene-switcher hidden"></div>
     </section>
 
     <section id="tab-layers" class="tab-content">
@@ -68,29 +77,11 @@
     </section>
 
     <section id="tab-commands" class="tab-content">
-      <div class="command-grid">
-        <button class="btn btn-cmd" data-cmd="meld.screenshot">Screenshot</button>
-        <button class="btn btn-cmd" data-cmd="meld.screenshot.vertical">Screenshot V</button>
-        <button class="btn btn-cmd" data-cmd="meld.toggleVirtualCameraAction">Virtual Camera</button>
-        <button class="btn btn-cmd" data-cmd="meld.recordClip">Record Clip</button>
-        <button class="btn btn-cmd" data-cmd="meld.replay.show">Show Replay</button>
-        <button class="btn btn-cmd" data-cmd="meld.replay.dismiss">Dismiss Replay</button>
-      </div>
-      <hr>
-      <h3>Stream Events</h3>
-      <div class="command-grid">
-        <button class="btn btn-cmd" data-event="CONFETTIFALL_TRIGGER">Confetti Fall</button>
-        <button class="btn btn-cmd" data-event="CONFETTIPOP_TRIGGER">Confetti Pop</button>
-        <button class="btn btn-cmd" data-event="STOPWATCH_RESET">Stopwatch Reset</button>
-        <button class="btn btn-cmd" data-event="STOPWATCH_PAUSE">Stopwatch Pause</button>
-        <button class="btn btn-cmd" data-event="STOPWATCH_RESUME">Stopwatch Resume</button>
-        <button class="btn btn-cmd" data-event="COUNTDOWN_RESET">Countdown Reset</button>
-        <button class="btn btn-cmd" data-event="COUNTDOWN_PAUSE">Countdown Pause</button>
-        <button class="btn btn-cmd" data-event="COUNTDOWN_RESUME">Countdown Resume</button>
-        <button class="btn btn-cmd" data-event="WHEELSPIN_SPIN">Spin Wheel</button>
-        <button class="btn btn-cmd" data-event="COUNTER_INCREMENT">Counter +</button>
-        <button class="btn btn-cmd" data-event="COUNTER_DECREMENT">Counter -</button>
-      </div>
+      <div id="commandDeck" class="command-deck"></div>
+    </section>
+
+    <section id="tab-widgets" class="tab-content">
+      <div id="widgetList" class="widget-list"></div>
     </section>
   </main>
 
@@ -109,11 +100,15 @@
   <script src="/js/dom.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/ui.js"></script>
+  <script src="/js/catalog.js"></script>
   <script src="/js/state.js"></script>
   <script src="/js/render-scenes.js"></script>
+  <script src="/js/render-media.js"></script>
   <script src="/js/render-layers.js"></script>
   <script src="/js/transform.js"></script>
   <script src="/js/render-audio.js"></script>
+  <script src="/js/render-commands.js"></script>
+  <script src="/js/render-widgets.js"></script>
   <script src="/js/render.js"></script>
   <script src="/js/actions.js"></script>
   <script src="/js/main.js"></script>

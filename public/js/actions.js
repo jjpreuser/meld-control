@@ -81,5 +81,15 @@ async function handleAction(btn) {
       expandedProps[`${id}-transform`] = !expandedProps[`${id}-transform`];
       renderLayers();
       break;
+
+    case 'media-play':
+      await mediaPlay(btn.dataset.layerId);
+      showToast('Play');
+      break;
+
+    case 'media-pause':
+      await mediaPause(btn.dataset.layerId);
+      showToast('Pause');
+      break;
   }
 }

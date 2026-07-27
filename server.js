@@ -150,21 +150,14 @@ class MeldBridge {
   }
 }
 
-async function main() {
-  const bridge = new MeldBridge();
-  bridge.connect();
-
+// Build the Express app with every REST route wired to `bridge`. Split out from
+// main() so tests can inject a fake Meld bridge and exercise the routes without a
+// live Meld Studio or the UI WebSocket server.
+function buildApp(bridge) {
   const app = express();
-  const server = http.createServer(app);
-  const wss = new WebSocket.Server({ server });
 
   app.use(express.json());
   app.use(express.static(path.join(__dirname, 'public')));
-
-  wss.on('connection', (ws) => {
-    bridge.uiSockets.add(ws);
-    ws.on('close', () => bridge.uiSockets.delete(ws));
-  });
 
   function api(fn) {
     return (req, res) => {
@@ -181,6 +174,14 @@ async function main() {
     res.json(bridge.cache);
   }));
 
+  // Must precede '/api/scene/:id/show' — otherwise the literal "staged" is
+  // captured as :id and this cuts to a scene named "staged" instead of promoting
+  // the staged scene (Feature 5 TAKE).
+  app.post('/api/scene/staged/show', api(async (req, res) => {
+    bridge.meld.showStagedScene();
+    res.json({ ok: true });
+  }));
+
   app.post('/api/scene/:id/show', api(async (req, res) => {
     bridge.meld.showScene(req.params.id);
     res.json({ ok: true });
@@ -188,11 +189,6 @@ async function main() {
 
   app.post('/api/scene/:id/stage', api(async (req, res) => {
     bridge.meld.setStagedScene(req.params.id);
-    res.json({ ok: true });
-  }));
-
-  app.post('/api/scene/staged/show', api(async (req, res) => {
-    bridge.meld.showStagedScene();
     res.json({ ok: true });
   }));
 
@@ -317,6 +313,22 @@ async function main() {
     res.json({ ok: true });
   }));
 
+  return app;
+}
+
+async function main() {
+  const bridge = new MeldBridge();
+  bridge.connect();
+
+  const app = buildApp(bridge);
+  const server = http.createServer(app);
+  const wss = new WebSocket.Server({ server });
+
+  wss.on('connection', (ws) => {
+    bridge.uiSockets.add(ws);
+    ws.on('close', () => bridge.uiSockets.delete(ws));
+  });
+
   server.listen(HTTP_PORT, '0.0.0.0', () => {
     console.log(`Meld Studio Control Bridge`);
     console.log(`  Local:    http://127.0.0.1:${HTTP_PORT}`);
@@ -339,4 +351,9 @@ async function main() {
   });
 }
 
-main();
+module.exports = { MeldBridge, buildApp, main };
+
+// Only auto-start when run directly (`node server.js`), not when imported by tests.
+if (require.main === module) {
+  main();
+}

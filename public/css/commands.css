@@ -10,7 +10,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 12px 8px;
   font-size: 12px;
   text-align: center;
 }
+
+/* Feature 3 — grouped command deck */
+.cmd-group { margin-bottom: 18px; }
+.cmd-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.cmd-icon { font-size: 15px; }
+.cmd-label { white-space: nowrap; }

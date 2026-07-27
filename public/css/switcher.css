@@ -1,0 +1,89 @@
+/* Feature 5 — PGM/PVW switcher + scene-mode toggle */
+.scene-mode-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.scene-mode-toggle .btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.scene-switcher.hidden,
+.scene-grid.hidden { display: none; }
+
+.switcher-cols {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.switcher-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+.switcher-col-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin-bottom: 10px;
+  padding: 4px;
+  border-radius: 4px;
+}
+.switcher-col-title.pvw { color: var(--success); border: 1px solid var(--success); }
+.switcher-col-title.pgm { color: var(--danger); border: 1px solid var(--danger); }
+
+.switcher-col-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.switcher-scene {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 12px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+}
+.switcher-scene.pvw-on { border-color: var(--success); box-shadow: 0 0 0 2px var(--success) inset; }
+.switcher-scene.pgm-on { border-color: var(--danger); box-shadow: 0 0 0 2px var(--danger) inset; }
+
+.switcher-take {
+  display: flex;
+  align-items: center;
+}
+.btn-take {
+  height: 100%;
+  min-width: 72px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: var(--warning);
+  border: none;
+  color: #1a1200;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.btn-take:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Feature 7 — audio track groups */
+.track-group { margin-bottom: 16px; }
+.track-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}

@@ -1,6 +1,24 @@
 // Renders the Scenes tab grid + the LIVE/NEXT scene bus, and the 1s timer tick.
+// Two modes (Feature 5): "simple" tap-to-switch cards, and "switcher" — a
+// vision-mixer PGM/PVW layout with a TAKE button.
 
 function renderScenes() {
+  // Reflect the active mode on the toggle buttons, if present.
+  const modeBar = $('sceneModeToggle');
+  if (modeBar) {
+    modeBar.querySelectorAll('[data-scene-mode]').forEach(b =>
+      b.classList.toggle('active', b.dataset.sceneMode === sceneMode));
+  }
+  const simple = $('sceneList');
+  const switcher = $('sceneSwitcher');
+  if (simple) simple.classList.toggle('hidden', sceneMode === 'switcher');
+  if (switcher) switcher.classList.toggle('hidden', sceneMode !== 'switcher');
+
+  if (sceneMode === 'switcher') return renderSwitcher();
+  return renderSimpleScenes();
+}
+
+function renderSimpleScenes() {
   const container = $('sceneList');
   const scenes = Object.entries(session.items || {})
     .filter(([, v]) => v.type === 'scene')
@@ -25,6 +43,39 @@ function renderScenes() {
       </div>
     `;
   }).join('');
+}
+
+// Feature 5 — PGM/PVW switcher: a Preview column (click to stage) and a Program
+// column (read-only, shows what's live), plus a TAKE button that cuts staged →
+// program via showStagedScene().
+function renderSwitcher() {
+  const container = $('sceneSwitcher');
+  if (!container) return;
+  const { program, preview, scenes } = busScenes(session.items || {});
+
+  const col = (side, activeId) => scenes.map(([id, s]) => {
+    const on = id === activeId;
+    const cls = side === 'pgm' ? (on ? 'pgm-on' : '') : (on ? 'pvw-on' : '');
+    // Program column is display-only; Preview column stages on click.
+    const attrs = side === 'pvw' ? `data-action="stage" data-id="${id}"` : '';
+    return `<button class="switcher-scene ${cls}" ${attrs}>${escHtml(s.name || `Scene ${s.index}`)}</button>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="switcher-cols">
+      <div class="switcher-col pvw">
+        <div class="switcher-col-title pvw">PREVIEW</div>
+        <div class="switcher-col-list">${col('pvw', preview ? preview[0] : null)}</div>
+      </div>
+      <div class="switcher-take">
+        <button class="btn btn-take" id="btnTake" ${preview ? '' : 'disabled'}>TAKE</button>
+      </div>
+      <div class="switcher-col pgm">
+        <div class="switcher-col-title pgm">PROGRAM</div>
+        <div class="switcher-col-list">${col('pgm', program ? program[0] : null)}</div>
+      </div>
+    </div>
+  `;
 }
 
 function renderBus() {
