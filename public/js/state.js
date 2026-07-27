@@ -16,3 +16,7 @@ const gainTimers = {};            // per-track debounce handles for gain POSTs
 // the context string every register/unregister call is tagged with.
 const observedTracks = new Set();
 const OBSERVER_CTX = 'meld-control-web';
+
+// Feature 3 (deep dive): Instant Replay panel settings. dismissSec is the
+// user-editable auto-dismiss delay (default 15s); autoDismiss toggles it.
+const replaySettings = { autoDismiss: true, dismissSec: 15 };

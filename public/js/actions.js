@@ -91,5 +91,18 @@ async function handleAction(btn) {
       await mediaPause(btn.dataset.layerId);
       showToast('Pause');
       break;
+
+    case 'instant-replay':
+      // Fire-and-forget: the runner owns its own status/countdown UI.
+      runInstantReplay();
+      break;
+
+    case 'replay-extend':
+      replayExtendFn();
+      break;
+
+    case 'replay-dismiss-now':
+      replayDismissFn();
+      break;
   }
 }

@@ -25,8 +25,8 @@ global `fetch`.
 Expected tail:
 
 ```
-ℹ tests 60
-ℹ pass 60
+ℹ tests 68
+ℹ pass 68
 ℹ fail 0
 ```
 
@@ -36,7 +36,7 @@ Expected tail:
 |------|-------|
 | `test/helpers.js` | Test harness: a **fake Meld** that records every method call, and `startServer()` which mounts the real Express app (`buildApp` from `server.js`) against it on an ephemeral port. |
 | `test/api.test.js` | **Every REST endpoint** — asserts each route calls the correct `meld.*` method with the correct arguments, plus validation (400) and disconnected (503) paths. |
-| `test/frontend.test.js` | **DOM-free frontend logic** in `public/js/catalog.js` — the command/widget catalogs and the pure helpers (`groupTracks`, `busScenes`, `isMediaLayer`, `gainPctOf`). |
+| `test/frontend.test.js` | **DOM-free frontend logic** in `public/js/catalog.js` (command catalog + pure helpers `groupTracks`, `busScenes`, `isMediaLayer`, `gainPctOf`) and `public/js/replay.js` (the Instant Replay planner `replayPlan` + `clampDismissSec`). |
 
 #### API endpoint coverage (`test/api.test.js`)
 
@@ -72,6 +72,8 @@ Every route in `server.js` is exercised:
 | Suite | Asserts | Feature |
 |-------|---------|---------|
 | command catalog | includes explicit `start*/stop*` stream+record variants, all capture/camera commands, every command has a label | 3 |
+| `replayPlan` | Instant Replay macro emits `recordClip → wait → replay.show → countdown → replay.dismiss` in order; the pre-dismiss wait is flagged `countdown` and honors `dismissDelayMs`; `autoDismiss:false` stops after show; `autoShow:false` records only; zero delays drop wait steps but keep commands | 3 |
+| `clampDismissSec` | clamps auto-dismiss seconds to `[1,120]` + rounds; genuine non-numbers → 15s default; empty-ish (`''`/`null`) → 1s floor | 3 |
 | `isMediaLayer` | true only when `mediaSource` present | 2 |
 | `groupTracks` | global tracks → global group; layer-parented track resolves **layer → scene**; unresolvable parent → "Other" (never dropped); scenes ordered by index; empty input safe | 7 |
 | `busScenes` | picks `current` (PGM) and `staged` (PVW); null when none flagged; excludes non-scenes | 5 |
@@ -89,10 +91,12 @@ fake bridge and hit real routes with no socket to Meld. The frontend's pure logi
 lives in `public/js/catalog.js` behind a `typeof module` export guard (a no-op in
 the browser), so the same code the page runs is unit-tested in node.
 
-The **browser rendering** (markup produced by `render-widgets.js`,
-`render-commands.js`, `render-media.js`, the switcher in `render-scenes.js`) and
-**pointer interactions** are not automated (that would need jsdom / a headless
-browser). They're covered by the manual checklist below.
+The **browser rendering** (markup produced by `render-commands.js`,
+`render-media.js`, `render-replay.js`, the switcher in `render-scenes.js`) and
+**pointer interactions / timers** (e.g. the Instant Replay runner + countdown in
+`render-replay.js`) are not automated (that would need jsdom / a headless
+browser). They're covered by the manual checklist below — the *pure* replay
+planner underneath the runner is unit-tested.
 
 ---
 
@@ -136,6 +140,21 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/api/session    # 
 - [ ] Start/Stop Stream and Start/Stop Record use the explicit variants (a toast
       appears; state can't drift because start≠stop).
 
+### Feature 3 (deep dive) — Instant Replay panel
+- [ ] Commands tab shows an **Instant Replay** panel above the command deck.
+- [ ] Tapping **▶ Instant Replay** runs the macro end-to-end: status shows
+      *Saving clip… → Showing replay → auto-dismiss countdown → Replay dismissed*.
+      In Meld: a clip saves, the replay shows, then dismisses on its own.
+- [ ] While the countdown runs, **+10s** extends it and **Dismiss now** ends it
+      immediately (fires `meld.replay.dismiss`).
+- [ ] The auto-dismiss delay field defaults to **15**, is editable, and clamps to
+      1–120s; unchecking **Auto-dismiss** disables the field and the macro stops
+      after Show (replay stays up until you Dismiss manually).
+- [ ] Tapping Instant Replay again mid-run restarts cleanly (no double timers).
+- [ ] **Expected limitation:** the countdown is *our* client-side timer — if you
+      dismiss inside Meld, our UI keeps counting and just fires a harmless no-op
+      dismiss (Meld exposes no replay state to sync against).
+
 ### Feature 4 — Widgets tab — REMOVED
 Scrapped per request (widgets didn't trigger reliably against the live build). The
 generic `POST /api/stream-event` bridge endpoint remains for future use.
@@ -176,6 +195,5 @@ generic `POST /api/stream-event` bridge endpoint remains for future use.
 - **New frontend logic:** keep it DOM-free and export it from
   `public/js/catalog.js` (behind the existing `module.exports` guard), then add a
   suite to `test/frontend.test.js`.
-- **New widget/command:** just extend `WIDGETS` / `COMMAND_GROUPS` in
-  `catalog.js` — the catalog tests assert coverage and the renderers pick it up
-  automatically.
+- **New command:** just extend `COMMAND_GROUPS` in `catalog.js` — the catalog
+  tests assert coverage and the deck renderer picks it up automatically.

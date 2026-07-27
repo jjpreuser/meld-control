@@ -98,6 +98,18 @@ async function init() {
     const slider = e.target.closest('.gain-slider');
     if (slider) return postGain(slider.dataset.trackId);
 
+    // Instant Replay panel settings.
+    if (e.target.id === 'replayDismissSec') {
+      replaySettings.dismissSec = clampDismissSec(e.target.value);
+      renderReplay();
+      return;
+    }
+    if (e.target.id === 'replayAutoDismiss') {
+      replaySettings.autoDismiss = e.target.checked;
+      renderReplay();
+      return;
+    }
+
     const input = e.target.closest('[data-prop]');
     if (!input) return;
     const value = input.type === 'number' ? parseFloat(input.value) : input.value;
@@ -156,8 +168,10 @@ async function init() {
     tab.addEventListener('click', () => showTab(tab.dataset.tab));
   });
 
-  // Command deck is catalog-driven and stateless — render it once.
+  // Command deck is catalog-driven and stateless — render it once. The Instant
+  // Replay panel lives above it and is likewise static (client-side only).
   renderCommands();
+  renderReplay();
 
   startTimer();
 }

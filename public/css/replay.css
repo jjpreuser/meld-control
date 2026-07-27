@@ -1,0 +1,74 @@
+/* Feature 3 (deep dive) — Instant Replay panel (Commands tab, above the deck) */
+.replay-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.replay-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.replay-title { font-size: 14px; font-weight: 600; }
+.replay-hint { font-size: 11px; color: var(--text-muted); }
+
+/* Primary one-tap action */
+.btn-replay-go {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.btn-replay-go:hover { filter: brightness(1.08); }
+.btn-replay-go:disabled { opacity: 0.6; cursor: default; }
+
+/* Auto-dismiss settings row */
+.replay-opts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+.replay-opt { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.replay-sec {
+  width: 56px;
+  padding: 4px 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  text-align: center;
+}
+.replay-sec:focus { border-color: var(--primary); outline: none; }
+.replay-sec:disabled { opacity: 0.5; }
+.replay-unit { color: var(--text-muted); }
+
+/* Live status / countdown line */
+.replay-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 20px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.replay-count { color: var(--warning); font-weight: 600; }
+
+.replay-note {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
