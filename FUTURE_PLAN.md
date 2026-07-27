@@ -51,7 +51,7 @@ Everything below is about turning already-bridged capabilities into real feature
 ### Session item shapes
 
 - **scene** — `type`, `index`, `name`, `current` (live now), `staged` (prepared)
-- **track** — `type`, `parent?` (scene id; absent ⇒ global), `name`, `monitoring`, `muted`
+- **track** — `type`, `parent?` (**layer id**; absent ⇒ global), `name`, `monitoring`, `muted`
 - **layer** — `type`, `parent` (scene id), `index`, `name`, `visible`, `width`, `height`, `x`, `y`, `rotation`, `source?` (image path), `url?` (browser source), `mediaSource?` (media path)
 - **effect** — `type`, `parent` (layer id), `name`, `enabled`
 
@@ -76,6 +76,16 @@ Everything below is about turning already-bridged capabilities into real feature
 - Orientation: `rotation`
 - Visibility: `visible`
 - Content: `source` (image path), `url` (browser source), `mediaSource` (media file path)
+
+> **`setProperty` is not layer-only.** The API doc lists writable props on every item type:
+> - **Layers:** `name`, `visible`, `x`, `y`, `width`, `height`, `rotation`
+> - **Tracks:** `name`, `muted`, `monitoring`
+> - **Scenes:** `name`
+> - **Effects:** `name`, `enabled`
+>
+> Two cheap wins fall out of this (both gated on v2+):
+> 1. **Rename** any scene/layer/track/effect via a small inline edit affordance.
+> 2. **Set explicit state** for mute/monitor/effect-enabled (`setProperty(id, "muted", true)`) instead of the toggle methods, so a button can't drift out of sync — same reasoning Feature 3 gives for preferring `start*/stop*` over `toggle*`.
 
 > API note: `setProperty` is **Version 2+** only, and it silently ignores `parent`, `type`, and `index`. Guard on `bridge.cache.version >= 2` before showing this UI.
 > Ref: *Property Management* section of the [WebChannel API docs](https://github.com/MeldStudio/streamdeck/blob/main/WebChannelAPI.md).
@@ -239,13 +249,15 @@ Turn the existing stage endpoints into a proper vision-mixer layout:
 **Impact: low. Effort: low.**
 
 ### What it does
-A track's `parent` field is the scene id it belongs to, or **absent** for a global track (mic, desktop audio). Group the audio tab into "Global" and per-scene sections so the mixer matches Meld's mental model.
+A track's `parent` field is the **layer id** it belongs to (layer-associated audio, e.g. a browser/media source's own audio), or **absent** for a global track (mic, desktop audio). Group the audio tab into "Global" and per-layer/per-scene sections so the mixer matches Meld's mental model.
+
+> **Correction:** an earlier draft assumed `track.parent` was a *scene* id — the API doc says it is a **layer** id. To place a track under a scene, resolve `track.parent` (layer) → `layer.parent` (scene). Verify against a live session with `GET /api/debug/meld` before building, since track shapes are exactly the kind of thing docs get wrong.
 
 ### How we build it
-- **Frontend only:** in [render-audio.js](public/js/render-audio.js), partition tracks by `item.parent` presence. No bridge change.
+- **Frontend only:** in [render-audio.js](public/js/render-audio.js), partition tracks by `item.parent` presence. Tracks with a `parent` resolve through `session.items[parent]` (the layer) to that layer's scene for section grouping. No bridge change.
 
 ### Reference
-- [WebChannel API — Audio Track item type](https://github.com/MeldStudio/streamdeck/blob/main/WebChannelAPI.md) (`parent` optional = global track)
+- [WebChannel API — Audio Track item type](https://github.com/MeldStudio/streamdeck/blob/main/WebChannelAPI.md) (`parent` optional = layer id; absent = global track)
 
 ---
 
