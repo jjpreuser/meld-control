@@ -9,7 +9,9 @@ const assert = require('node:assert/strict');
 const {
   COMMAND_GROUPS, isMediaLayer, groupTracks, busScenes, gainPctOf,
 } = require('../public/js/catalog.js');
-const { REPLAY_DEFAULTS, clampDismissSec, replayPlan } = require('../public/js/replay.js');
+const {
+  REPLAY_DEFAULTS, clampDismissSec, replayPlan, sanitizePos, pickNewItemId,
+} = require('../public/js/replay.js');
 
 describe('command catalog  [Feature 3]', () => {
   const allCmds = COMMAND_GROUPS.flatMap((g) => g.commands.map((c) => c.cmd));
@@ -160,6 +162,80 @@ describe('replayPlan  [Feature 3 — Instant Replay]', () => {
       'meld.recordClip', 'meld.replay.show', 'meld.replay.dismiss',
     ]);
     assert.ok(!steps.some((s) => s.wait), 'no wait steps when delays are 0');
+  });
+});
+
+describe('replayPlan position  [Feature 3 — Instant Replay]', () => {
+  test('no position → no setPosition step', () => {
+    const steps = replayPlan();
+    assert.ok(!steps.some((s) => s.setPosition));
+  });
+
+  test('position inserts a setPosition step after show, before dismiss', () => {
+    const steps = replayPlan({ position: { x: 100, y: 200, width: 640, height: 360 } });
+    const iShow = steps.findIndex((s) => s.cmd === 'meld.replay.show');
+    const iPos = steps.findIndex((s) => s.setPosition);
+    const iDismiss = steps.findIndex((s) => s.cmd === 'meld.replay.dismiss');
+    assert.ok(iShow >= 0 && iPos > iShow && iDismiss > iPos, 'order show < setPosition < dismiss');
+    assert.deepEqual(steps[iPos].setPosition, { x: 100, y: 200, width: 640, height: 360 });
+  });
+
+  test('setPosition survives autoDismiss:false (still positions, just no dismiss)', () => {
+    const steps = replayPlan({ position: { x: 1, y: 2, width: 3, height: 4 }, autoDismiss: false });
+    assert.ok(steps.some((s) => s.setPosition));
+    assert.ok(!steps.some((s) => s.cmd === 'meld.replay.dismiss'));
+  });
+
+  test('position is sanitized inside the plan', () => {
+    const steps = replayPlan({ position: { x: 'oops', y: 200 } });
+    const pos = steps.find((s) => s.setPosition).setPosition;
+    assert.equal(pos.x, 0);       // bad → 0
+    assert.equal(pos.y, 200);
+    assert.equal(pos.width, 640); // missing → default
+    assert.equal(pos.height, 360);
+  });
+});
+
+describe('sanitizePos  [Feature 3 — Instant Replay]', () => {
+  test('coerces numeric strings, defaults genuinely non-numeric fields', () => {
+    // 'x' → NaN → default width; undefined height → default; null → 0 (Number(null)===0)
+    assert.deepEqual(sanitizePos({ x: '10', y: 20, width: 'x' }),
+      { x: 10, y: 20, width: 640, height: 360 });
+  });
+  test('empty object → all defaults', () => {
+    assert.deepEqual(sanitizePos({}), { x: 0, y: 0, width: 640, height: 360 });
+  });
+});
+
+describe('pickNewItemId  [Feature 3 — Instant Replay]', () => {
+  test('returns the single newly-added item', () => {
+    const before = { a: { type: 'layer' } };
+    const after = { a: { type: 'layer' }, r: { type: 'layer', width: 640, x: 0 } };
+    assert.equal(pickNewItemId(before, after), 'r');
+  });
+
+  test('prefers an added item that carries geometry', () => {
+    const before = {};
+    const after = {
+      meta: { type: 'audio' },                         // no geometry
+      lay: { type: 'layer', width: 100, height: 50 },  // positionable
+    };
+    assert.equal(pickNewItemId(before, after), 'lay');
+  });
+
+  test('prefers a replay-named added item when several qualify', () => {
+    const before = {};
+    const after = {
+      one: { type: 'layer', width: 10 },
+      two: { type: 'layer', width: 10, name: 'Replay' },
+    };
+    assert.equal(pickNewItemId(before, after), 'two');
+  });
+
+  test('returns null when nothing new appeared', () => {
+    const items = { a: { type: 'layer' } };
+    assert.equal(pickNewItemId(items, items), null);
+    assert.equal(pickNewItemId({ a: 1 }, {}), null);
   });
 });
 

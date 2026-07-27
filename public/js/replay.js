@@ -18,7 +18,43 @@ const REPLAY_DEFAULTS = {
   showDelayMs: 600,     // gap between recordClip and replay.show (tune vs live Meld)
   autoDismiss: true,    // fire replay.dismiss after the clip has been on screen
   dismissDelayMs: 15000, // user-editable; default 15s per spec
+  // Preset on-screen position for the shown replay, or null to leave it where
+  // Meld places it. Pixels on a 1920x1080 canvas (same model as the transform
+  // editor). Applied by finding the item that appears when replay.show fires and
+  // setProperty-ing its geometry — best effort, since Meld exposes no replay id.
+  position: null,       // { x, y, width, height } | null
+  positionDelayMs: 250, // gap after show before the replay item is in the session
 };
+
+// Coerce a position object to finite pixel numbers with sane fallbacks.
+function sanitizePos(pos) {
+  const n = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+  return {
+    x: n(pos && pos.x, 0),
+    y: n(pos && pos.y, 0),
+    width: n(pos && pos.width, 640),
+    height: n(pos && pos.height, 360),
+  };
+}
+
+// Given the session.items maps captured just BEFORE and just AFTER firing
+// replay.show, return the id of a newly-appeared, positionable item (the replay
+// layer). Prefers an added item that carries geometry, then one that looks
+// replay-named; falls back to the first added id. null if nothing new appeared.
+function pickNewItemId(beforeItems, afterItems) {
+  beforeItems = beforeItems || {};
+  afterItems = afterItems || {};
+  const added = Object.keys(afterItems).filter((id) => !(id in beforeItems));
+  if (!added.length) return null;
+  const hasGeom = (it) => it && (it.width != null || it.height != null || it.x != null);
+  const geom = added.filter((id) => hasGeom(afterItems[id]));
+  const pool = geom.length ? geom : added;
+  const replayish = pool.find((id) => {
+    const it = afterItems[id] || {};
+    return /replay/i.test(`${it.name || ''} ${it.type || ''}`);
+  });
+  return replayish || pool[0];
+}
 
 // Clamp a user-entered auto-dismiss value (seconds) to a sane range. Non-numbers
 // fall back to the default; result is a whole number of seconds in [1, 120].
@@ -38,6 +74,10 @@ function replayPlan(opts) {
   if (o.autoShow) {
     if (o.showDelayMs > 0) steps.push({ wait: o.showDelayMs });
     steps.push({ cmd: 'meld.replay.show' });
+    if (o.position) {
+      if (o.positionDelayMs > 0) steps.push({ wait: o.positionDelayMs });
+      steps.push({ setPosition: sanitizePos(o.position) });
+    }
     if (o.autoDismiss) {
       if (o.dismissDelayMs > 0) steps.push({ wait: o.dismissDelayMs, countdown: true });
       steps.push({ cmd: 'meld.replay.dismiss' });
@@ -47,5 +87,5 @@ function replayPlan(opts) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { REPLAY_DEFAULTS, clampDismissSec, replayPlan };
+  module.exports = { REPLAY_DEFAULTS, clampDismissSec, replayPlan, sanitizePos, pickNewItemId };
 }

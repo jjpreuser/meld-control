@@ -109,6 +109,17 @@ async function init() {
       renderReplay();
       return;
     }
+    if (e.target.id === 'replayPosEnabled') {
+      replaySettings.position.enabled = e.target.checked;
+      renderReplay();
+      return;
+    }
+    const posField = { replayPosX: 'x', replayPosY: 'y', replayPosW: 'width', replayPosH: 'height' }[e.target.id];
+    if (posField) {
+      const n = parseFloat(e.target.value);
+      replaySettings.position[posField] = Number.isFinite(n) ? n : 0;
+      return;
+    }
 
     const input = e.target.closest('[data-prop]');
     if (!input) return;

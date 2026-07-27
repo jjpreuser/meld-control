@@ -5,9 +5,11 @@ commands already ship in the Commands tab; this is where we design what "deeper"
 looks like. Edit freely.
 
 **Status:** ✅ Instant Replay SHIPPED — one-tap macro (save → show → 15s
-auto-dismiss, editable) with a countdown pill (+10s / Dismiss now), in the
-Commands tab. API fully mapped (3 commands, no readback). Raw Save/Show/Dismiss
-buttons remain in the deck.
+auto-dismiss, editable) with a countdown pill (+10s / Dismiss now) and an optional
+**preset on-screen position** (X/Y/W/H), in the Commands tab. API fully mapped
+(3 commands, no readback). Raw Save/Show/Dismiss buttons remain in the deck.
+Positioning is best-effort — see the "Preset replay position" section for the one
+live-build check still open.
 
 Files: [public/js/replay.js](public/js/replay.js) (pure planner, unit-tested),
 [public/js/render-replay.js](public/js/render-replay.js) (panel + runner +
@@ -105,6 +107,25 @@ build, since there's no "clip ready" signal.
 Our countdown reflects **our** timer, not Meld's actual replay state. If the user
 dismisses inside Meld, or a replay ends on its own, our UI won't know. We show the
 timer as "our auto-dismiss," not "replay is playing," to avoid lying to the user.
+
+### Preset replay position (SHIPPED, pending live verification)
+The panel has an optional **Position replay** box (X/Y/W/H, px on 1920×1080). The
+replay commands take no position arg, so we can't ask Meld to place it. Instead:
+
+1. Snapshot `session.items` **before** firing `meld.replay.show`.
+2. Fire show, wait `positionDelayMs` (~250ms).
+3. Re-fetch the session and **diff** — the newly-appeared item is the replay layer
+   (`pickNewItemId`, prefers a geometry-bearing / replay-named add).
+4. `POST /api/property/:id/batch` its `x/y/width/height` — the same setProperty
+   (v2+) path the transform editor uses.
+
+This reuses everything; **no bridge/server change**. The **one open unknown** (needs
+a live Meld — see discovery step earlier in this doc): whether `replay.show`
+actually surfaces the replay as a settable session item. If it doesn't,
+`pickNewItemId` returns null and the UI says so — the replay still plays, just
+unmoved. Confirm this once against a running build and record the result here:
+
+> Live result (fill in): replay.show adds item? ___  has x/y/w/h? ___  stable id? ___
 
 ## Implementation notes (when we build)
 

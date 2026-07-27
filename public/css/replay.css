@@ -53,6 +53,32 @@
 .replay-sec:disabled { opacity: 0.5; }
 .replay-unit { color: var(--text-muted); }
 
+/* Position preset row */
+.replay-pos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.replay-pos.hidden { display: none; }
+.replay-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.replay-num {
+  width: 62px;
+  padding: 4px 6px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  text-align: right;
+}
+.replay-num:focus { border-color: var(--primary); outline: none; }
+
 /* Live status / countdown line */
 .replay-status {
   display: flex;

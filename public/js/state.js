@@ -19,4 +19,10 @@ const OBSERVER_CTX = 'meld-control-web';
 
 // Feature 3 (deep dive): Instant Replay panel settings. dismissSec is the
 // user-editable auto-dismiss delay (default 15s); autoDismiss toggles it.
-const replaySettings = { autoDismiss: true, dismissSec: 15 };
+// position is an optional preset location (px on 1920x1080) applied to the
+// replay layer when it appears; default a bottom-right picture-in-picture.
+const replaySettings = {
+  autoDismiss: true,
+  dismissSec: 15,
+  position: { enabled: false, x: 1180, y: 620, width: 640, height: 360 },
+};

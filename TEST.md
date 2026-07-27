@@ -25,8 +25,8 @@ global `fetch`.
 Expected tail:
 
 ```
-ℹ tests 68
-ℹ pass 68
+ℹ tests 78
+ℹ pass 78
 ℹ fail 0
 ```
 
@@ -74,6 +74,9 @@ Every route in `server.js` is exercised:
 | command catalog | includes explicit `start*/stop*` stream+record variants, all capture/camera commands, every command has a label | 3 |
 | `replayPlan` | Instant Replay macro emits `recordClip → wait → replay.show → countdown → replay.dismiss` in order; the pre-dismiss wait is flagged `countdown` and honors `dismissDelayMs`; `autoDismiss:false` stops after show; `autoShow:false` records only; zero delays drop wait steps but keep commands | 3 |
 | `clampDismissSec` | clamps auto-dismiss seconds to `[1,120]` + rounds; genuine non-numbers → 15s default; empty-ish (`''`/`null`) → 1s floor | 3 |
+| `replayPlan` position | with a preset position, emits a `setPosition` step ordered *after* show and *before* dismiss; survives `autoDismiss:false`; the position is sanitized in-plan | 3 |
+| `sanitizePos` | coerces numeric strings, defaults non-numeric fields to a PiP box | 3 |
+| `pickNewItemId` | diffs before/after session snapshots to find the item that appeared on `replay.show`; prefers a geometry-bearing then replay-named item; `null` when nothing new | 3 |
 | `isMediaLayer` | true only when `mediaSource` present | 2 |
 | `groupTracks` | global tracks → global group; layer-parented track resolves **layer → scene**; unresolvable parent → "Other" (never dropped); scenes ordered by index; empty input safe | 7 |
 | `busScenes` | picks `current` (PGM) and `staged` (PVW); null when none flagged; excludes non-scenes | 5 |
@@ -151,6 +154,13 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/api/session    # 
       1–120s; unchecking **Auto-dismiss** disables the field and the macro stops
       after Show (replay stays up until you Dismiss manually).
 - [ ] Tapping Instant Replay again mid-run restarts cleanly (no double timers).
+- [ ] **Position replay** (checkbox) reveals X/Y/W/H fields (px on 1920×1080). With
+      it on, run Instant Replay → the shown replay jumps to that box. Status briefly
+      reads *Positioning replay…*.
+- [ ] **Discovery check (needs a live build):** confirm the replay actually moves.
+      If it doesn't, watch for the status *"couldn't find a layer to position"* —
+      that means `replay.show` doesn't surface a session item we can target on your
+      build, and positioning isn't possible there (the replay still plays).
 - [ ] **Expected limitation:** the countdown is *our* client-side timer — if you
       dismiss inside Meld, our UI keeps counting and just fires a harmless no-op
       dismiss (Meld exposes no replay state to sync against).
