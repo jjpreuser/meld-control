@@ -240,12 +240,17 @@ async function positionReplayLayer(beforeItems, pos) {
     setReplayStatus('Replay shown — couldn’t find a layer to position', 3000);
     return;
   }
-  await API.post(`/api/property/${id}/batch`, {
-    props: {
-      x: Math.round(pos.x), y: Math.round(pos.y),
-      width: Math.round(pos.width), height: Math.round(pos.height),
-    },
-  }).catch(() => {});
+  try {
+    await API.post(`/api/property/${id}/batch`, {
+      props: {
+        x: Math.round(pos.x), y: Math.round(pos.y),
+        width: Math.round(pos.width), height: Math.round(pos.height),
+      },
+    });
+  } catch (err) {
+    // Non-fatal: the replay is on screen, we just couldn't move it.
+    setReplayStatus(`Replay shown — couldn’t position it (${err.message})`, 3000);
+  }
 }
 
 async function runInstantReplay() {
@@ -267,7 +272,15 @@ async function runInstantReplay() {
         // Snapshot right before showing so we can diff for the new replay layer.
         if (step.cmd === 'meld.replay.show' && posOn) beforeItems = await replaySessionItems();
         setReplayStatus(replayStepLabel(step.cmd));
-        await API.post('/api/command', { command: step.cmd }).catch(() => {});
+        // Abort the macro if a command doesn't land — continuing would run a
+        // countdown for a replay that was never shown, which is exactly the kind
+        // of lying-to-the-user REPLAY_PLAN warns about.
+        try {
+          await API.post('/api/command', { command: step.cmd });
+        } catch (err) {
+          setReplayStatus(`Replay failed — ${err.message}`, 4000);
+          return;
+        }
       } else if (step.setPosition) {
         await positionReplayLayer(beforeItems, step.setPosition);
       } else if (step.countdown) {

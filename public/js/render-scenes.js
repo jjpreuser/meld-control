@@ -27,9 +27,10 @@ function renderSimpleScenes() {
   container.innerHTML = scenes.map(([id, scene]) => {
     const isCurrent = scene.current ? 'current' : '';
     const isStaged = scene.staged ? 'staged' : '';
+    const isMoving = transitioningScenes.has(id) ? 'transitioning' : '';
     const elapsed = scene.current && sceneTimers[id] ? formatTime(sceneTimers[id]) : '';
     return `
-      <div class="scene-card ${isCurrent} ${isStaged}" data-id="${id}">
+      <div class="scene-card ${isCurrent} ${isStaged} ${isMoving}" data-id="${id}">
         <div class="scene-card-body" data-action="layers">
           <div class="scene-card-icon">${getSceneIcon(scene)}</div>
           <div class="scene-card-name">${escHtml(scene.name || `Scene ${scene.index}`)}</div>
@@ -86,8 +87,10 @@ function renderBus() {
   const current = scenes.find(([, v]) => v.current);
   const staged = scenes.find(([, v]) => v.staged);
 
-  $('busLiveName').textContent = current ? escHtml(current[1].name) : '—';
-  $('busNextName').textContent = staged ? escHtml(staged[1].name) : '—';
+  // textContent already escapes — running escHtml first double-encoded, so a
+  // scene called "Q&A" showed up as "Q&amp;A".
+  $('busLiveName').textContent = current ? (current[1].name || '—') : '—';
+  $('busNextName').textContent = staged ? (staged[1].name || '—') : '—';
 
   const timer = current && sceneTimers[current[0]] ? formatTime(sceneTimers[current[0]]) : '';
   $('busLiveTimer').textContent = timer;
@@ -98,10 +101,40 @@ function renderBus() {
   bus.classList.toggle('hidden', scenes.length === 0);
 }
 
+// Update just the two live-timer readouts. This used to re-render the entire
+// scene grid (and the whole switcher) every second to move one clock — throwing
+// away DOM, killing CSS transitions, and fighting any in-flight interaction.
+function tickTimers() {
+  const { program } = busScenes(session.items || {});
+  const text = program && sceneTimers[program[0]] ? formatTime(sceneTimers[program[0]]) : '';
+  const bus = $('busLiveTimer');
+  if (bus) bus.textContent = text;
+  if (program) {
+    const cell = document.querySelector(`.scene-card[data-id="${program[0]}"] .scene-card-timer`);
+    if (cell) cell.textContent = text;
+  }
+}
+
 function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    renderScenes();
-    renderBus();
-  }, 1000);
+  timerInterval = setInterval(tickTimers, 1000);
+}
+
+// ---- scene transition flash ------------------------------------------------
+// Marks a scene as switching for 1.5s. Survives re-renders via
+// transitioningScenes; clearTransitioning() ends it early when the POST failed.
+function markTransitioning(sceneId) {
+  transitioningScenes.add(sceneId);
+  const el = document.querySelector(`.scene-card[data-id="${sceneId}"]`);
+  if (el) el.classList.add('transitioning');
+  clearTimeout(transitionTimers[sceneId]);
+  transitionTimers[sceneId] = setTimeout(() => clearTransitioning(sceneId), 1500);
+}
+
+function clearTransitioning(sceneId) {
+  clearTimeout(transitionTimers[sceneId]);
+  delete transitionTimers[sceneId];
+  transitioningScenes.delete(sceneId);
+  const el = document.querySelector(`.scene-card[data-id="${sceneId}"]`);
+  if (el) el.classList.remove('transitioning');
 }

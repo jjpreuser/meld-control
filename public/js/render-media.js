@@ -24,11 +24,13 @@ function mediaTransport(layerId) {
 }
 
 // Fired by the delegated click handler in main.js.
+// These intentionally let a rejection propagate: the caller (handleAction) wraps
+// them in withFeedback, which is what decides whether to toast success or error.
 async function mediaPlay(layerId) {
-  await API.post(`/api/call-function/${layerId}`, { command: 'play' }).catch(() => {});
+  await API.post(`/api/call-function/${layerId}`, { command: 'play' });
 }
 async function mediaPause(layerId) {
-  await API.post(`/api/call-function/${layerId}`, { command: 'pause' }).catch(() => {});
+  await API.post(`/api/call-function/${layerId}`, { command: 'pause' });
 }
 
 if (typeof module !== 'undefined' && module.exports) {

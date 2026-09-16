@@ -4,7 +4,11 @@ async function postGain(trackId) {
   const slider = document.querySelector(`.gain-slider[data-track-id="${trackId}"]`);
   if (!slider) return;
   clearTimeout(gainTimers[trackId]);
-  await API.post(`/api/track/${trackId}/gain`, { gain: parseFloat(slider.value) }).catch(() => {});
+  try {
+    await API.post(`/api/track/${trackId}/gain`, { gain: parseFloat(slider.value) });
+  } catch (err) {
+    showError('Gain', err);
+  }
 }
 
 async function handleAction(btn) {
@@ -19,43 +23,46 @@ async function handleAction(btn) {
       showTab('layers');
       break;
 
-    case 'show':
+    // Every mutation below follows the same shape: report honestly (no success
+    // toast unless the POST actually succeeded), and lean on the bridge's
+    // sessionChanged push for the redraw, with one coalesced safety refetch.
+    case 'show': {
       if (!id) return;
-      card.classList.add('transitioning');
-      await API.post(`/api/scene/${id}/switch`);
-      showToast('Switched scene');
-      setTimeout(refreshSession, 400);
-      setTimeout(() => card.classList.remove('transitioning'), 1500);
+      markTransitioning(id);
+      const ok = await withFeedback('Scene switch', 'Switched scene',
+        () => API.post(`/api/scene/${id}/switch`));
+      if (ok) scheduleSafetyRefresh();
+      else clearTransitioning(id);
       break;
+    }
 
     case 'stage':
       if (!id) return;
-      await API.post(`/api/scene/${id}/stage`);
-      showToast('Staged scene');
-      setTimeout(refreshSession, 300);
+      if (await withFeedback('Stage scene', 'Staged scene',
+        () => API.post(`/api/scene/${id}/stage`))) scheduleSafetyRefresh();
       break;
 
     case 'toggle-vis':
       if (!selectedSceneId || !id) return;
-      await API.post(`/api/layer/${id}/toggle`, { sceneId: selectedSceneId });
-      setTimeout(refreshSession, 300);
+      if (await withFeedback('Layer toggle', null,
+        () => API.post(`/api/layer/${id}/toggle`, { sceneId: selectedSceneId }))) scheduleSafetyRefresh();
       break;
 
     case 'mute':
-      await API.post(`/api/track/${btn.dataset.trackId}/mute`);
-      setTimeout(refreshSession, 300);
+      if (await withFeedback('Mute', null,
+        () => API.post(`/api/track/${btn.dataset.trackId}/mute`))) scheduleSafetyRefresh();
       break;
 
     case 'monitor':
-      await API.post(`/api/track/${btn.dataset.trackId}/monitor`);
-      setTimeout(refreshSession, 300);
+      if (await withFeedback('Monitor', null,
+        () => API.post(`/api/track/${btn.dataset.trackId}/monitor`))) scheduleSafetyRefresh();
       break;
 
     case 'toggle-effect': {
       const { effectId, layerId } = btn.dataset;
       if (!selectedSceneId || !layerId || !effectId) return;
-      await API.post(`/api/effect/${effectId}/toggle`, { sceneId: selectedSceneId, layerId });
-      setTimeout(refreshSession, 300);
+      if (await withFeedback('Effect toggle', null,
+        () => API.post(`/api/effect/${effectId}/toggle`, { sceneId: selectedSceneId, layerId }))) scheduleSafetyRefresh();
       break;
     }
 
@@ -83,13 +90,11 @@ async function handleAction(btn) {
       break;
 
     case 'media-play':
-      await mediaPlay(btn.dataset.layerId);
-      showToast('Play');
+      await withFeedback('Play', 'Play', () => mediaPlay(btn.dataset.layerId));
       break;
 
     case 'media-pause':
-      await mediaPause(btn.dataset.layerId);
-      showToast('Pause');
+      await withFeedback('Pause', 'Pause', () => mediaPause(btn.dataset.layerId));
       break;
 
     case 'instant-replay':

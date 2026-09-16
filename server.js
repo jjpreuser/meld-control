@@ -93,6 +93,7 @@ class MeldBridge {
         this.meld.isRecordingChanged.connect(() => {
           this.cache.isRecording = !!this.meld.isRecording;
           this.broadcast({ type: 'update', key: 'isRecording', value: this.cache.isRecording });
+        this.broadcastMeldState();
         });
 
         this.meld.gainUpdated.connect((trackId, gain, muted) => {
@@ -114,8 +115,12 @@ class MeldBridge {
     });
 
     this.ws.on('close', () => {
+      const wasConnected = this.connected;
       this.connected = false;
       this.meld = null;
+      // Browsers keep their own socket to us, so nothing else would tell them
+      // Meld went away — they'd sit on a stale session still looking 'Connected'.
+      if (wasConnected) this.broadcastMeldState();
       if (!this.reconnecting) {
         this.reconnecting = true;
         setTimeout(() => this.connect(), 2000);
@@ -129,6 +134,16 @@ class MeldBridge {
     if (!this.connected || !this.meld) {
       throw new Error('Not connected to Meld Studio');
     }
+  }
+
+  // Current bridge <-> Meld link state, as sent to browsers on change and on
+  // each new UI socket.
+  meldStateMessage() {
+    return { type: 'meld', connected: this.connected, version: this.cache.version };
+  }
+
+  broadcastMeldState() {
+    this.broadcast(this.meldStateMessage());
   }
 
   broadcast(data) {
@@ -295,6 +310,12 @@ function buildApp(bridge) {
     res.json({ ok: true });
   }));
 
+  // NOT wrapped in api(): this is the one route that must answer while Meld is
+  // down, so a client can tell 'bridge up, Meld offline' from 'nothing there'.
+  app.get('/api/status', (req, res) => {
+    res.json({ connected: bridge.connected, version: bridge.cache.version });
+  });
+
   app.get('/api/version', api(async (req, res) => {
     res.json({ version: bridge.cache.version });
   }));
@@ -326,6 +347,8 @@ async function main() {
 
   wss.on('connection', (ws) => {
     bridge.uiSockets.add(ws);
+    // Tell the fresh browser where things stand before it asks for anything.
+    try { ws.send(JSON.stringify(bridge.meldStateMessage())); } catch {}
     ws.on('close', () => bridge.uiSockets.delete(ws));
   });
 

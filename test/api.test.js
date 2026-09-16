@@ -5,6 +5,7 @@
 const { test, before, after, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const { makeFakeMeld, startServer, get, post, callOf } = require('./helpers.js');
+const { MeldBridge } = require('../server.js');
 
 let srv;
 before(async () => { srv = await startServer(); });
@@ -249,5 +250,55 @@ describe('disconnected bridge -> 503', () => {
   test('GET /api/session returns 503 when not connected', async () => {
     const { status } = await get(down.url, '/api/session');
     assert.equal(status, 503);
+  });
+
+  // The one route that must answer while Meld is down, so the UI can tell
+  // "bridge up, Meld offline" apart from "nothing is there".
+  test('GET /api/status still answers 200 with connected:false', async () => {
+    const { status, body } = await get(down.url, '/api/status');
+    assert.equal(status, 200);
+    assert.equal(body.connected, false);
+  });
+});
+
+describe('meld link state', () => {
+  test('GET /api/status reports connected:true when Meld is up', async () => {
+    const { status, body } = await get(url(), '/api/status');
+    assert.equal(status, 200);
+    assert.equal(body.connected, true);
+    assert.equal(body.version, 2);
+  });
+
+  test('meldStateMessage() carries the link state and version', () => {
+    const bridge = new MeldBridge();
+    bridge.cache.version = 2;
+    assert.deepEqual(bridge.meldStateMessage(), { type: 'meld', connected: false, version: 2 });
+    bridge.connected = true;
+    assert.deepEqual(bridge.meldStateMessage(), { type: 'meld', connected: true, version: 2 });
+  });
+
+  // Regression: browsers hold their own socket, so losing Meld produced no UI
+  // signal at all and the header kept claiming "Connected" over an empty app.
+  test('broadcastMeldState() pushes to every UI socket', () => {
+    const bridge = new MeldBridge();
+    const sent = [];
+    bridge.uiSockets.add({ send: (s) => sent.push(JSON.parse(s)) });
+    bridge.uiSockets.add({ send: (s) => sent.push(JSON.parse(s)) });
+    bridge.connected = true;
+    bridge.broadcastMeldState();
+    assert.equal(sent.length, 2);
+    assert.equal(sent[0].type, 'meld');
+    assert.equal(sent[0].connected, true);
+  });
+
+  test('broadcast() drops a socket that throws instead of failing the loop', () => {
+    const bridge = new MeldBridge();
+    const ok = [];
+    const dead = { send() { throw new Error('socket gone'); } };
+    bridge.uiSockets.add(dead);
+    bridge.uiSockets.add({ send: (s) => ok.push(s) });
+    bridge.broadcastMeldState();
+    assert.equal(bridge.uiSockets.has(dead), false);
+    assert.equal(ok.length, 1);
   });
 });

@@ -50,3 +50,13 @@ h3 { font-size: 14px; margin-bottom: 12px; color: var(--text-muted); }
 
 .toast.hidden { opacity: 0; pointer-events: none; }
 .toast.visible { opacity: 1; }
+
+/* Failed action — must not read as a confirmation. */
+.toast.error {
+  background: #3d1418;
+  border-color: var(--danger);
+  color: #ffb4ae;
+  white-space: normal;
+  max-width: min(90vw, 420px);
+  text-align: center;
+}

@@ -25,8 +25,8 @@ global `fetch`.
 Expected tail:
 
 ```
-ℹ tests 78
-ℹ pass 78
+ℹ tests 83
+ℹ pass 83
 ℹ fail 0
 ```
 
@@ -46,6 +46,7 @@ Every route in `server.js` is exercised:
 |----------|---------|---------|
 | `GET /api/session` | returns cache (session + version); 503 when disconnected | core |
 | `GET /api/version` | returns version | core |
+| `GET /api/status` | reports the bridge↔Meld link; **200 even when Meld is down** | connection state |
 | `GET /api/debug/meld` | enumerates keys, marks signals vs functions | discovery |
 | `POST /api/scene/:id/show` | `showScene(id)` | scenes |
 | `POST /api/scene/:id/switch` | `showScene(id)` | scenes |
@@ -122,6 +123,33 @@ HTTP_PORT=3999 node server.js
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/js/catalog.js  # -> 200
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3999/api/session    # -> 503 (no Meld)
 ```
+
+### Connection state — honesty checks
+
+`GET /api/status` answers 200 even with no Meld, so it is the one endpoint worth
+curling during the smoke test above:
+
+```bash
+curl -s http://127.0.0.1:3999/api/status   # -> {"connected":false,"version":1}
+```
+
+The header has **three** states, and each must be reachable:
+
+- [ ] Bridge + Meld both up → green dot, "Connected", version badge, no overlay.
+- [ ] **Quit Meld Studio with the page open** → within ~2s the dot goes amber,
+      text reads "Meld offline", and the overlay says "Meld Studio offline".
+      (Before this was fixed the header kept saying "Connected" over an empty app.)
+- [ ] Restart Meld → the page recovers on its own, no reload, scenes repopulate.
+- [ ] **Stop the bridge** (Ctrl-C `npm start`) → red dot, "Disconnected", overlay
+      says reconnecting; restart it and the page recovers.
+- [ ] While Meld is offline, tap a scene / mute / a command → a **red** error toast
+      naming the failure, and **no** success toast.
+- [ ] A scene named `Q&A` shows as `Q&A` in the LIVE/NEXT bus (not `Q&amp;A`).
+- [ ] Switch a scene and watch the card flash: the highlight lasts its full ~1.5s
+      and is not wiped by the 1s timer tick.
+- [ ] With devtools Network open, tapping several scenes in a row does **not**
+      produce one `GET /api/session` per tap — the pushes carry the state and the
+      single coalesced safety refetch is cancelled by them.
 
 ### Feature 1 — Layer transform editor (already shipped)
 - [ ] Layers tab → pick a scene → a layer card shows X/Y/W/H/rotation inputs.

@@ -1,14 +1,38 @@
 // Entry point: session fetch, tab navigation, WebSocket wiring, and all the
 // top-level event handlers. Loaded last, after every helper it depends on.
 
+// Full snapshot fetch. A 503 here means the bridge is up but Meld isn't: reflect
+// that instead of retrying in a tight loop — the bridge pushes a 'meld' message
+// the moment Meld returns, which triggers the refetch for us.
 async function refreshSession() {
+  cancelSafetyRefresh();
   try {
-    const data = await API.get('/api/session');
-    applySession(data);
-  } catch {
-    setStatus(false);
-    setTimeout(refreshSession, 1000);
+    applySession(await API.get('/api/session'));
+  } catch (err) {
+    if (err && err.status === 503) {
+      meldUp = false;
+      updateConnectionUi();
+    } else {
+      // Network-level failure: our own socket is probably going down too, and
+      // its onclose will schedule the reconnect. One retry covers a blip.
+      setTimeout(refreshSession, 1000);
+    }
   }
+}
+
+// One shared, coalesced re-fetch used as a BACKSTOP after actions. The bridge
+// pushes sessionChanged, so this normally gets cancelled before it fires; it only
+// matters when a mutation doesn't produce a signal. Previously every action
+// queued its own 300ms refetch, so a handful of taps meant a burst of redundant
+// full-session GETs racing the pushes.
+function scheduleSafetyRefresh(ms = 700) {
+  clearTimeout(safetyRefreshTimer);
+  safetyRefreshTimer = setTimeout(refreshSession, ms);
+}
+
+function cancelSafetyRefresh() {
+  clearTimeout(safetyRefreshTimer);
+  safetyRefreshTimer = null;
 }
 
 function showTab(name) {
@@ -33,18 +57,40 @@ async function init() {
 
   function connectWs() {
     const ws = new WebSocket(wsUrl);
-    ws.onopen = () => refreshSession();
+    ws.onopen = () => {
+      bridgeUp = true;
+      updateConnectionUi();
+      refreshSession();
+    };
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'update') {
+        if (msg.type === 'meld') {
+          // The bridge <-> Meld link changed. Coming back up, refetch the whole
+          // session: whatever we were holding is from before Meld restarted.
+          const wasUp = meldUp;
+          meldUp = !!msg.connected;
+          if (msg.version) apiVersion = msg.version;
+          updateConnectionUi();
+          if (meldUp && !wasUp) refreshSession();
+        } else if (msg.type === 'update') {
+          // The push CARRIES the new value — render straight from it. This used
+          // to call refreshSession(), spending a full HTTP round-trip to re-fetch
+          // data we were already holding in msg.value.
+          cancelSafetyRefresh();
+          meldUp = true;
           if (msg.key === 'session') {
-            session = msg.value;
+            session = msg.value || { items: {} };
             if (msg.sceneTimers) sceneTimers = msg.sceneTimers;
-          } else {
-            session[msg.key] = msg.value;
+            renderAll();
+          } else if (msg.key === 'isStreaming') {
+            isStreaming = !!msg.value;
+            renderTransport();
+          } else if (msg.key === 'isRecording') {
+            isRecording = !!msg.value;
+            renderTransport();
           }
-          refreshSession();
+          updateConnectionUi();
         } else if (msg.type === 'gain') {
           // Discovery against live Meld (2026-07-16): gainUpdated does not fire on
           // setGain and never reported a stored fader value — it's most likely a
@@ -58,7 +104,9 @@ async function init() {
       } catch {}
     };
     ws.onclose = () => {
-      setStatus(false);
+      bridgeUp = false;
+      meldUp = false;
+      updateConnectionUi();
       setTimeout(connectWs, 2000);
     };
   }
@@ -73,8 +121,9 @@ async function init() {
 
     const cmdBtn = e.target.closest('[data-cmd]');
     if (cmdBtn) {
-      await API.post('/api/command', { command: cmdBtn.dataset.cmd });
-      showToast(`Command: ${cmdBtn.dataset.cmd}`);
+      const cmd = cmdBtn.dataset.cmd;
+      await withFeedback(cmd, `Command: ${cmd}`,
+        () => API.post('/api/command', { command: cmd }));
       return;
     }
 
@@ -87,9 +136,9 @@ async function init() {
     }
 
     if (e.target.closest('#btnTake')) {
-      await API.post('/api/scene/staged/show');
-      showToast('TAKE — cut to program');
-      setTimeout(refreshSession, 300);
+      const ok = await withFeedback('TAKE', 'TAKE — cut to program',
+        () => API.post('/api/scene/staged/show'));
+      if (ok) scheduleSafetyRefresh();
     }
   });
 
@@ -125,10 +174,9 @@ async function init() {
     const input = e.target.closest('[data-prop]');
     if (!input) return;
     const value = input.type === 'number' ? parseFloat(input.value) : input.value;
-    try {
-      await API.post(`/api/property/${input.dataset.layerId}`, { property: input.dataset.prop, value });
-      showToast(`${input.dataset.prop}: ${value}`);
-    } catch {}
+    const prop = input.dataset.prop;
+    await withFeedback(`Set ${prop}`, `${prop}: ${value}`,
+      () => API.post(`/api/property/${input.dataset.layerId}`, { property: prop, value }));
   });
 
   // Live readout while dragging a fader; debounced POST so we don't flood the bridge.
@@ -148,28 +196,23 @@ async function init() {
     const scenes = Object.entries(session.items || {}).filter(([, v]) => v.type === 'scene');
     const staged = scenes.find(([, v]) => v.staged);
     if (!staged) return;
-    const cardEl = document.querySelector(`.scene-card[data-id="${staged[0]}"]`);
-    if (cardEl) cardEl.classList.add('transitioning');
-    await API.post(`/api/scene/${staged[0]}/switch`);
-    showToast('Showing next scene');
-    setTimeout(refreshSession, 400);
-    if (cardEl) setTimeout(() => cardEl.classList.remove('transitioning'), 1500);
+    markTransitioning(staged[0]);
+    const ok = await withFeedback('Scene switch', 'Showing next scene',
+      () => API.post(`/api/scene/${staged[0]}/switch`));
+    if (ok) scheduleSafetyRefresh();
+    else clearTransitioning(staged[0]);
   });
 
-  document.getElementById('btnScreenshot').addEventListener('click', async () => {
-    await API.post('/api/command', { command: 'meld.screenshot' });
-    showToast('Screenshot taken');
-  });
+  document.getElementById('btnScreenshot').addEventListener('click', () =>
+    withFeedback('Screenshot', 'Screenshot taken',
+      () => API.post('/api/command', { command: 'meld.screenshot' })));
 
-  document.getElementById('btnStream').addEventListener('click', async () => {
-    await API.post('/api/stream/toggle');
-    setTimeout(refreshSession, 500);
-  });
+  // isStreamingChanged / isRecordingChanged push the new state, so no refetch.
+  document.getElementById('btnStream').addEventListener('click', () =>
+    withFeedback('Stream toggle', null, () => API.post('/api/stream/toggle')));
 
-  document.getElementById('btnRecord').addEventListener('click', async () => {
-    await API.post('/api/record/toggle');
-    setTimeout(refreshSession, 500);
-  });
+  document.getElementById('btnRecord').addEventListener('click', () =>
+    withFeedback('Record toggle', null, () => API.post('/api/record/toggle')));
 
   document.getElementById('btnBackScenes').addEventListener('click', () => {
     selectedSceneId = null;

@@ -32,6 +32,8 @@ header h1 {
 
 .status-dot.connected { background: var(--success); }
 .status-dot.disconnected { background: var(--danger); }
+/* Bridge reachable, Meld Studio not — a real third state, not "connected". */
+.status-dot.degraded { background: var(--warning); }
 
 .badge {
   font-size: 11px;
