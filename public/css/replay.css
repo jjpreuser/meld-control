@@ -53,6 +53,9 @@
 .replay-sec:disabled { opacity: 0.5; }
 .replay-unit { color: var(--text-muted); }
 
+/* Visual position editor — a smaller stage than the layer transform one. */
+.replay-stage { max-width: 440px; }
+
 /* Position preset row */
 .replay-pos {
   display: flex;

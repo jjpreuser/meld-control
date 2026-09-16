@@ -118,6 +118,7 @@ async function init() {
     if (posField) {
       const n = parseFloat(e.target.value);
       replaySettings.position[posField] = Number.isFinite(n) ? n : 0;
+      renderReplay(); // reflect the typed value on the drag box
       return;
     }
 
